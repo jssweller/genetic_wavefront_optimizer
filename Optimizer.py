@@ -76,6 +76,7 @@ class Optimizer:
         self.interface.get_output_fields(uniform_pop)
         self.update_metrics(uniform_pop, 'initial')
         initial_mean_intensity = self.parent_masks.get_output_fields()
+        os.makedirs(self.save_path, exist_ok=True)
         np.savetxt(self.save_path+'/initial_mean_intensity_roi.txt', initial_mean_intensity, fmt='%d')
         
     def get_final_metrics(self):
@@ -107,7 +108,7 @@ class Optimizer:
             self.interface.get_output_fields(self.parent_masks)
             self.parent_masks.ranksort()
             self.update_metrics()
-            
+
         self.child_masks = self.parent_masks.make_children(self.uniform_childs)
         self.interface.get_output_fields(self.child_masks)
         self.child_masks.ranksort()
@@ -126,13 +127,10 @@ class Optimizer:
         print('genetic optimizer running...')
         self.gen=1
         self.reset_time()
-        self.parent_masks.init_zernike_mask()
         self.init_metrics()
         self.get_initial_metrics()
         self.initial_log()
-        
         self.reset_time()
-        self.parent_masks.init_masks()
         while self.gen <= numgens:
             print('generation',self.gen,' ....',end='\t')
             self.parent_masks.update_num_mutations(self.gen,numgens)
@@ -149,7 +147,6 @@ class Optimizer:
     def run_zernike(self, zmodes, coeff_range):
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
         best_zmodes = np.zeros(13)
-        self.parent_masks.init_zernike_mask()
         self.init_metrics()
         args0 = self.args
         args0.pop=1
@@ -157,15 +154,14 @@ class Optimizer:
         self.save_path=self.save_path+'/zernike'
         initial_base_mask = self.base_mask
         base_mask = self.base_mask
-        self.parent_masks = Population.Population(args0,base_mask)
-        self.parent_masks.init_zernike_mask()
-        
+        self.parent_masks = Population.Population(args0,base_mask)        
         self.initial_zernike_log(zmodes,coeff_range)
         
         for zmode in zmodes:
             if zmode<3 or zmode>15:
                 print('Warning: Zernike mode number out of range (ignored).')
                 continue
+            print('\nOptimizing Zernike Mode',str(zmode))
             # Course search
             snum = 10
             coeffs = np.arange(coeff_range[0],coeff_range[1],snum)
@@ -196,15 +192,18 @@ class Optimizer:
     
     def get_best_coefficient(self,zmode,coeffs):
         best_coeff=coeffs[0]
+        print('coeff',end='')
         for i,coeff in enumerate(coeffs):
+            print('...'+str(coeff),end='')
             self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
             self.interface.get_output_fields(self.parent_masks)
             self.update_metrics()
             if i>0:
-                if self.metrics['spot'][-1]>self.metrics['spot'][-2]:
+                if self.metrics['maxmet'][-1]>self.metrics['maxmet'][-2]:
                     best_coeff=coeff
             else:
                 best_coeff=coeff
+        print('\n')
         return best_coeff
     
     def initial_log(self):
@@ -214,8 +213,7 @@ class Optimizer:
         file.write('Run_name: '+self.save_path+'\n\n')
         file.write('Parameters:\n')
 
-        file.write('\nzernike mode='+str(self.zernike_coeffs))
-        file.write('\nmode coefficient='+str(self.zernike_coeffs))
+        file.write('\nmode coefficients='+str(self.zernike_coeffs))
         for arg in vars(self.args):
             file.write('\n'+str(arg)+'='+str(getattr(self.args, arg)))
 
@@ -246,7 +244,7 @@ class Optimizer:
         
         
     def save_checkpoint(self):
-        np.savetxt(self.save_path+'/spot_metric_vals_checkpoint.txt', self.metrics['spot'], fmt='%10.3f')
+        np.savetxt(self.save_path+'/spot_metric_vals_checkpoint.txt', 1/np.asarray(self.metrics['spot']), fmt='%10.3f')
         np.savetxt(self.save_path+'/max_metric_vals_checkpoint.txt', self.metrics['maxmet'], fmt='%10.3f')
         np.savetxt(self.save_path+'/mean_intensity_vals_checkpoint.txt', self.metrics['mean'], fmt='%10.3f')
         np.savetxt(self.save_path+'/max_intensity_vals_checkpoint.txt', self.metrics['maxint'], fmt='%d')
@@ -272,7 +270,7 @@ class Optimizer:
         plt.close()
 
         plt.figure()
-        plt.plot(self.metrics['spot'])
+        plt.plot(1/np.asarray(self.metrics['spot']))
         plt.savefig(self.save_path+'/spot_metrics_plot')
         plt.close()
 
