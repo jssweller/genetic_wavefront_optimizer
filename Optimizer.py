@@ -11,7 +11,7 @@ class Optimizer:
     def __init__(self, args, interface, base_mask=0):
         self.args = args
         self.base_mask = base_mask
-        self.zernike_coeffs = args.zernike_coeffs # list of zernike (mode number, coefficient) tuples
+        self.zernike_coeffs = args.zernike_coeffs # list of zernike coefficients
         self.grating_step = args.grating_step
         self.save_path = args.save_path
         self.numgens = args.gens
@@ -70,10 +70,13 @@ class Optimizer:
     def get_initial_metrics(self):
         args0 = self.args
         args0.num_masks = self.num_masks_initial_metrics
-        print('initial metric masks ',args0.num_masks)
+        args0.zernike_coeffs = [0]
+##        print('initial metric masks ',args0.num_masks)
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         self.interface.get_output_fields(uniform_pop)
         self.update_metrics(uniform_pop, 'initial')
+        initial_mean_intensity = self.parent_masks.get_output_fields()
+        np.savetxt(self.save_path+'/initial_mean_intensity_roi.txt', initial_mean_intensity, fmt='%d')
         
     def get_final_metrics(self):
         args0 = self.args
@@ -84,6 +87,19 @@ class Optimizer:
         uniform_pop.update_masks([final_mask]*self.num_masks_initial_metrics)
         self.interface.get_output_fields(uniform_pop)
         self.update_metrics(uniform_pop, 'final')
+        self.get_final_mean_intensity()
+        
+    def get_final_mean_intensity(self):
+        args0 = self.args
+        args0.num_masks = self.num_masks_initial_metrics
+        args0.zernike_coeffs = [0]
+        uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
+        self.interface.get_output_fields(uniform_pop)
+        final_mean_intensity = self.parent_masks.get_output_fields()
+        np.savetxt(self.save_path+'/final_mean_intensity_roi.txt', final_mean_intensity, fmt='%d')
+        file = open(self.save_path+'/log.txt','a')
+        file.write('\n Final Avg Intensity: '+str(np.mean(final_mean_intensity)))
+        file.close()
     
     
     def run_generation(self):
@@ -139,6 +155,7 @@ class Optimizer:
         args0.pop=1
         args0.fitness_func = 'spot'
         self.save_path=self.save_path+'/zernike'
+        initial_base_mask = self.base_mask
         base_mask = self.base_mask
         self.parent_masks = Population.Population(args0,base_mask)
         self.parent_masks.init_zernike_mask()
@@ -147,7 +164,7 @@ class Optimizer:
         
         for zmode in zmodes:
             if zmode<3 or zmode>15:
-                print('Warning: Zernike mode number out of range.')
+                print('Warning: Zernike mode number out of range (ignored).')
                 continue
             # Course search
             snum = 10
@@ -164,6 +181,8 @@ class Optimizer:
         
         np.savetxt(self.save_path+'/zmodes.txt',best_zmodes, fmt='%d')
         self.parent_masks.update_masks([self.parent_masks.create_mask(True)])
+        
+        self.base_mask = initial_base_mask
         self.get_final_metrics()
         self.save_checkpoint()
         self.final_log()
@@ -187,14 +206,13 @@ class Optimizer:
             else:
                 best_coeff=coeff
         return best_coeff
-       
     
     def initial_log(self):
         os.makedirs(self.save_path, exist_ok=True)
         file = open(self.save_path+'/log.txt','w+')
-        file.write('This is the log file for wave_opt.py. \n \n')
-        file.write('Run_name: '+self.save_path+' \n \n')
-        file.write('Parameters: \n')
+        file.write('This is the log file for wave_opt.py.\n\n')
+        file.write('Run_name: '+self.save_path+'\n\n')
+        file.write('Parameters:\n')
 
         file.write('\nzernike mode='+str(self.zernike_coeffs))
         file.write('\nmode coefficient='+str(self.zernike_coeffs))
@@ -202,26 +220,28 @@ class Optimizer:
             file.write('\n'+str(arg)+'='+str(getattr(self.args, arg)))
 
         file.write('\n\ninitial metrics time: '+str(self.get_time()))
+        file.close()
     
     def initial_zernike_log(self,zmodes,coeff_range):
         os.makedirs(self.save_path, exist_ok=True)
         file = open(self.save_path+'/log.txt','w+')
-        file.write('This is the zernike log file for wave_opt.py. \n \n')
-        file.write('Run_name: '+self.save_path+' \n \n')
-        file.write('Parameters: \n')
+        file.write('This is the zernike log file for wave_opt.py.\n\n')
+        file.write('Run_name: '+self.save_path+'\n\n')
+        file.write('Parameters:\n')
         file.write('\nzernike modes: '+str(zmodes))
         file.write('\ncoefficient range: '+str(coeff_range))
         for arg in vars(self.args):
             file.write('\n'+str(arg)+'='+str(getattr(self.args, arg)))
             
         file.write('\n\ninitial metrics time: '+str(self.get_time()))
+        file.close()
     
     def final_log(self):
         file = open(self.save_path+'/log.txt','a')
-        file.write('\n Final Spot Metric: '+str(self.metrics['spot'][-1]))
-        file.write('\n Final Spot Enhancement: '+str(self.metrics['spot'][-1]/self.metrics['spot'][0]))          
-        file.write('\n Final Intensity Enhancement: '+str(self.metrics['maxint'][-1]/self.metrics['maxint'][0]))
-        file.write('\n\n Optimization Time: '+str(self.get_time()))
+        file.write('\nFinal Spot Metric: '+str(self.metrics['spot'][-1]))
+        file.write('\nFinal Spot Enhancement: '+str(self.metrics['spot'][-1]/self.metrics['spot'][0]))          
+        file.write('\nFinal Intensity Enhancement: '+str(self.metrics['maxint'][-1]/self.metrics['maxint'][0]))
+        file.write('\n\nOptimization Time: '+str(self.get_time()))
         file.close()
         
         
