@@ -11,33 +11,35 @@ import Optimizer, Interface, Population
 def main(args):
     interface = Interface.Interface(args)
     
-    start_num = 2
+    start_num = 1
     coeffs = [50,100,150,200]
-    modes = np.arange(13)
+    modes = np.arange(1)+3
+
+##    modes = [3]
     
     for mode in modes:
         for coeff in coeffs:
             clist = np.zeros(13)
-            clist[mode]=coeff
+            clist[mode-3]=coeff
             args.zernike_coeffs = clist.tolist()
     
-            args.save_path = 'take_data_test/mode_'+str(mode+3)+'_coeff_'+str(coeff)
+            args.save_path = '../first_run/mode_'+str(mode)+'_coeff_'+str(coeff)
 
-            args.grating_step = 16
-            args.slm_width = 32
-            args.slm_height = 24
-            args.segment_width = 1
-            args.segment_height = 1
-            args.gens = 50
-            args.num_initial_metrics = 10
+##            args.grating_step = 16
+            args.slm_width = 1024
+            args.slm_height = 768
+            args.segment_width = 64
+            args.segment_height = 48
+            args.gens = 20
+            args.num_initial_metrics = 5
             args.num_masks = 30
 
                   
-            gopt = Optimizer.Optimizer(args,interface)
-            gopt.run_genetic()
+##            gopt = Optimizer.Optimizer(args,interface)
+##            gopt.run_genetic()
 
             zopt = Optimizer.Optimizer(args,interface)
-            zopt.run_zernike(np.arange(1,16),[-250,250])
+            zopt.run_zernike(modes,[-100,100])
             print('\n\nDONE............\n\n') 
 
             
