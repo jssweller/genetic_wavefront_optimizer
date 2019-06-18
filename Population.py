@@ -87,9 +87,10 @@ class Population:
     
     def get_slm_masks(self):
         """Return masks to be loaded onto slm."""
-##        print(np.shape(self.create_full_mask(self.masks[0])),np.shape(self.base_mask), np.shape(self.zernike_mask), np.shape(self.grating_mask))
-        slm_masks = [self.create_full_mask(mask) + self.base_mask + self.zernike_mask + self.grating_mask for mask in self.masks]
-        return np.mod(slm_masks,256).astype(np.uint8)
+        print(np.shape(self.create_full_mask(self.masks[0])),np.shape(self.base_mask), type(self.zernike_mask), np.shape(self.grating_mask))
+        slm_masks = [np.mod(self.create_full_mask(mask) + self.base_mask + self.zernike_mask + self.grating_mask,256) for mask in self.masks]
+##        slm_masks = np.asarray(slm_masks).astype(np.uint8)
+        return slm_masks
         
     def create_mask(self,uniform_bool=None):
         if uniform_bool is None:

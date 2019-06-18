@@ -13,34 +13,38 @@ def main(args):
     
     start_num = 1
     coeffs = [50,100,150,200]
-    modes = np.arange(1)+3
+    modes = np.arange(13)+3
+
+    segments = [[64,96],[64,48],[32,48],[32,24]]
 
 ##    modes = [3]
-    
-    for mode in modes:
-        for coeff in coeffs:
-            clist = np.zeros(13)
-            clist[mode-3]=coeff
-            args.zernike_coeffs = clist.tolist()
-    
-            args.save_path = '../first_run/mode_'+str(mode)+'_coeff_'+str(coeff)
+    for segment in segments:
+        for mode in modes:
+            for coeff in coeffs:
+                clist = np.zeros(13)
+                clist[mode-3]=coeff
+                args.zernike_coeffs = clist.tolist()
+        
+                args.save_path = '../first_run/mode_'+str(mode)+'_coeff_'+str(coeff)
 
-##            args.grating_step = 16
-            args.slm_width = 1024
-            args.slm_height = 768
-            args.segment_width = 64
-            args.segment_height = 48
-            args.gens = 20
-            args.num_initial_metrics = 5
-            args.num_masks = 30
+##                args.grating_step = 16
+                args.slm_width = 1024
+                args.slm_height = 768
+##                args.segment_width = 64
+##                args.segment_height = 48
+                args.segment_width = segment[0]
+                args.segment_height = segment[1]
+                args.gens = 1000
+                args.num_initial_metrics = 500
+                args.num_masks = 30
 
-                  
-##            gopt = Optimizer.Optimizer(args,interface)
-##            gopt.run_genetic()
+                      
+                gopt = Optimizer.Optimizer(args,interface)
+                gopt.run_genetic()
 
-            zopt = Optimizer.Optimizer(args,interface)
-            zopt.run_zernike(modes,[-100,100])
-            print('\n\nDONE............\n\n') 
+                zopt = Optimizer.Optimizer(args,interface)
+                zopt.run_zernike(modes,[-250,250])
+                print('\n\nDONE............\n\n') 
 
             
 if __name__ == '__main__':

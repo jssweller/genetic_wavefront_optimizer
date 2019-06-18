@@ -192,6 +192,7 @@ class Optimizer:
     
     def get_best_coefficient(self,zmode,coeffs):
         best_coeff=coeffs[0]
+        bestval=0
         print('coeff',end='')
         for i,coeff in enumerate(coeffs):
             print('...'+str(coeff),end='')
@@ -199,8 +200,9 @@ class Optimizer:
             self.interface.get_output_fields(self.parent_masks)
             self.update_metrics()
             if i>0:
-                if self.metrics['maxmet'][-1]>self.metrics['maxmet'][-2]:
-                    best_coeff=coeff
+                if self.metrics['maxmet'][-1]>bestval:
+                    best_coeff = coeff
+                    bestval = self.metrics['maxmet'][-1]
             else:
                 best_coeff=coeff
         print('\n')
