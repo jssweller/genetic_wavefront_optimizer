@@ -18,9 +18,10 @@ def main(args):
     segments = [[64,96],[64,48],[32,48],[32,24]]
 
 ##    modes = [3]
-    for segment in segments:
-        for mode in modes:
-            for coeff in coeffs:
+    
+    for mode in modes:
+        for coeff in coeffs:
+            for segment in segments:
                 gc.collect()
                 clist = np.zeros(13)
                 clist[mode-3]=coeff
@@ -36,17 +37,21 @@ def main(args):
                 args.segment_width = segment[0]
                 args.segment_height = segment[1]
                 args.gens = 1000
-                args.num_initial_metrics = 50
+                args.num_initial_metrics = 500
                 args.num_masks = 30
 
                       
-##                gopt = Optimizer.Optimizer(args,interface)
-##                gopt.run_genetic()
+                gopt = Optimizer.Optimizer(args,interface)
+                gopt.run_genetic()
+                gopt=0
+                print('\n\nDONE with genetic optimization............\n\n')
+                gc.collect()
                 
                 zopt = Optimizer.Optimizer(args,interface)
                 zopt.run_zernike(modes,[-240,240])
 ##                zopt.run_zernike(modes,[-20,20])
-                print('\n\nDONE............\n\n') 
+                zopt=0
+                print('\n\nDONE with zernike optimization............\n\n') 
 
             
 if __name__ == '__main__':

@@ -99,7 +99,7 @@ class Optimizer:
         final_mean_intensity = self.parent_masks.get_output_fields()
         np.savetxt(self.save_path+'/final_mean_intensity_roi.txt', final_mean_intensity, fmt='%d')
         file = open(self.save_path+'/log.txt','a')
-        file.write('\n Final Avg Intensity: '+str(np.mean(final_mean_intensity)))
+        file.write('\nFinal Avg Intensity: '+str(np.mean(final_mean_intensity)))
         file.close()
     
     
@@ -243,8 +243,8 @@ class Optimizer:
     
     def final_log(self):
         file = open(self.save_path+'/log.txt','a')
-        file.write('\nFinal Spot Metric: '+str(self.metrics['spot'][-1]))
-        file.write('\nFinal Spot Enhancement: '+str(self.metrics['spot'][-1]/self.metrics['spot'][0]))          
+        file.write('\nFinal Spot Metric: '+str(1/self.metrics['spot'][-1]))
+        file.write('\nFinal Spot Enhancement: '+str(self.metrics['spot'][0]/self.metrics['spot'][-1]))          
         file.write('\nFinal Intensity Enhancement: '+str(self.metrics['maxint'][-1]/self.metrics['maxint'][0]))
         file.write('\n\nOptimization Time: '+str(self.get_time()))
         file.close()
