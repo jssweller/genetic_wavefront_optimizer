@@ -3,7 +3,7 @@ import win32pipe as wp
 import win32file as wf
 import matplotlib.pyplot as plt
 import pyscreenshot as ImageGrab
-import time, datetime, sys, os, argparse
+import time, datetime, sys, os, argparse, gc
 
 import Optimizer, Interface, Population
 
@@ -11,7 +11,7 @@ import Optimizer, Interface, Population
 def main(args):
     interface = Interface.Interface(args)
     
-    start_num = 1
+    start_num = 2
     coeffs = [50,100,150,200]
     modes = np.arange(13)+3
 
@@ -21,11 +21,12 @@ def main(args):
     for segment in segments:
         for mode in modes:
             for coeff in coeffs:
+                gc.collect()
                 clist = np.zeros(13)
                 clist[mode-3]=coeff
                 args.zernike_coeffs = clist.tolist()
         
-                args.save_path = '../first_run/mode_'+str(mode)+'_coeff_'+str(coeff)
+                args.save_path = '../run_'+str(start_num)+'/mode_'+str(mode)+'_coeff_'+str(coeff)
 
 ##                args.grating_step = 16
                 args.slm_width = 1024
@@ -34,14 +35,14 @@ def main(args):
 ##                args.segment_height = 48
                 args.segment_width = segment[0]
                 args.segment_height = segment[1]
-                args.gens = 1000
+                args.gens = 10
                 args.num_initial_metrics = 500
                 args.num_masks = 30
 
                       
-                gopt = Optimizer.Optimizer(args,interface)
-                gopt.run_genetic()
-
+##                gopt = Optimizer.Optimizer(args,interface)
+##                gopt.run_genetic()
+                
                 zopt = Optimizer.Optimizer(args,interface)
                 zopt.run_zernike(modes,[-250,250])
                 print('\n\nDONE............\n\n') 

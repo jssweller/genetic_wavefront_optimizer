@@ -36,7 +36,7 @@ class Interface:
         """Return buffer size and mask as bytearray."""
         return bytearray(len(mask).to_bytes(self.num_bytes_buffer, byteorder='little', signed=False)) + bytearray(mask)
     
-    def get_output_fields(self,population):
+    def get_output_fields(self,population,repeat=1):
         """Transmit mask pixel data through pipe to apparatus. Return list of output field ROIs."""      
         input_masks = population.get_slm_masks()
         t0=time.time()
@@ -45,13 +45,13 @@ class Interface:
 ##        print(np.shape(input_masks))
 ##        print('sending...',end='')
         for i,mask in enumerate(input_masks):
-##            print(str(i)+'..',end='')
-            
             mask = self.flatten_mask(mask).astype(np.uint8)
-            wf.WriteFile(self.pipe_handle_out, self.encode_mask(mask))
-            read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
-            read_array = list(read_pipe[1])
-            roi_list.append(read_array[0::3])
+            mask = self.encode_mask(mask)
+            for j in range(repeat):                    
+                wf.WriteFile(self.pipe_handle_out, mask)
+                read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
+                read_array = list(read_pipe[1])
+                roi_list.append(read_array[0::3])
 ##        print('\nInterface Time (seconds): ', time.time()-t0)
         population.update_output_fields(roi_list)
         

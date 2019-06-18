@@ -20,8 +20,7 @@ class Optimizer:
         self.measure_all = args.measure_all
         
         self.gen = 0
-        
-        
+
         self.interface = interface
         self.parent_masks = Population.Population(self.args,base_mask)
         self.child_masks = 0
@@ -32,7 +31,7 @@ class Optimizer:
     def init_metrics(self):
         self.metrics={'masks':[], 'roi':[], 'maxint':[], 'spot':[],'maxmet':[],'mean':[]}
     
-    def update_metrics(self, population=None, update_type=''):
+    def update_metrics(self, population=None, update_type='', save_mask=True):
         if (update_type == 'final' or update_type == 'initial') and not (population is None):
             spot_metrics, mean_metrics, max_metrics, = [],[],[]
             for field in population.get_output_fields():
@@ -46,7 +45,8 @@ class Optimizer:
             self.metrics['maxmet'].append(np.mean(max_metrics))
             self.metrics['mean'].append(np.mean(mean_metrics))
             self.metrics['roi'].append(np.mean(roi,axis=0))
-            self.metrics['masks'].append(np.array(np.mean(masks,axis=0)).flatten())
+            if save_mask==True:
+                self.metrics['masks'].append(np.array(np.mean(masks,axis=0)).flatten())
         else:
             population = self.parent_masks
             population.ranksort()
@@ -56,10 +56,12 @@ class Optimizer:
             self.metrics['maxmet'].append(population.fitness(field,'max'))
             self.metrics['mean'].append(population.fitness(field,'mean'))
             self.metrics['roi'].append(field)
-            self.metrics['masks'].append(np.array(population.get_masks()[-1]).flatten())
+            if save_mask==True:
+                self.metrics['masks'].append(np.array(population.get_masks()[-1]).flatten())
         if update_type == 'final':
             self.metrics['roi'][-1]=self.metrics['roi'][-2]
-            self.metrics['masks'][-1]=self.metrics['masks'][-2]
+            if save_mask==True:
+                self.metrics['masks'][-1]=self.metrics['masks'][-2]
 
     def reset_time(self):
         self.time_start = time.time()
@@ -69,11 +71,10 @@ class Optimizer:
         
     def get_initial_metrics(self):
         args0 = self.args
-        args0.num_masks = self.num_masks_initial_metrics
         args0.zernike_coeffs = [0]
-##        print('initial metric masks ',args0.num_masks)
+        args0.num_masks = 1
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
-        self.interface.get_output_fields(uniform_pop)
+        self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
         self.update_metrics(uniform_pop, 'initial')
         initial_mean_intensity = self.parent_masks.get_output_fields()
         os.makedirs(self.save_path, exist_ok=True)
@@ -81,21 +82,20 @@ class Optimizer:
         
     def get_final_metrics(self):
         args0 = self.args
-##        args0.num_masks = self.num_masks_initial_metrics
         self.parent_masks.ranksort()
         final_mask = self.parent_masks.get_masks()[-1]
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
-        uniform_pop.update_masks([final_mask]*self.num_masks_initial_metrics)
-        self.interface.get_output_fields(uniform_pop)
+        uniform_pop.update_masks([final_mask])
+        self.interface.get_output_fields(uniform_pop,repeate=self.num_masks_initial_metrics)
         self.update_metrics(uniform_pop, 'final')
         self.get_final_mean_intensity()
         
     def get_final_mean_intensity(self):
         args0 = self.args
-        args0.num_masks = self.num_masks_initial_metrics
+        args0.num_masks = 1
         args0.zernike_coeffs = [0]
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
-        self.interface.get_output_fields(uniform_pop)
+        self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
         final_mean_intensity = self.parent_masks.get_output_fields()
         np.savetxt(self.save_path+'/final_mean_intensity_roi.txt', final_mean_intensity, fmt='%d')
         file = open(self.save_path+'/log.txt','a')
@@ -196,9 +196,13 @@ class Optimizer:
         print('coeff',end='')
         for i,coeff in enumerate(coeffs):
             print('...'+str(coeff),end='')
+            if i==0 or coeffs[i-1]==0 or coeff==0:
+                self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
+            else:
+                self.parent_masks.change_parent_zcoeff(coeff)
             self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
             self.interface.get_output_fields(self.parent_masks)
-            self.update_metrics()
+            self.update_metrics(save_mask=False)
             if i>0:
                 if self.metrics['maxmet'][-1]>bestval:
                     best_coeff = coeff

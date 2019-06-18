@@ -30,7 +30,7 @@ class Population:
         self.num_childs = int(round(self.num_masks/2)) # Number of new children per generation
         pstep = 1/sum(np.arange(self.num_masks+1)) # Increment for generating probability distribution.
         self.parent_probability_dist = np.arange(pstep,(self.num_masks+1)*pstep,pstep) # Probability distribution for parent selection.
-        self.phase_vals = np.arange(0,args.num_phase_vals,1) # Distribution of phase values for SLM
+        self.phase_vals = np.arange(0,args.num_phase_vals,1,dtype=np.uint8) # Distribution of phase values for SLM
         
         self.base_mask = base_mask
         self.zernike_mask = 0
@@ -83,19 +83,19 @@ class Population:
         self.base_mask = new_mask
                 
     def update_output_fields(self,output_fields):
-        self.output_fields = output_fields
+        self.output_fields = np.array(output_fields,dtype=np.int)
     
     def get_slm_masks(self):
         """Return masks to be loaded onto slm."""
-        print(np.shape(self.create_full_mask(self.masks[0])),np.shape(self.base_mask), type(self.zernike_mask), np.shape(self.grating_mask))
-        slm_masks = [np.mod(self.create_full_mask(mask) + self.base_mask + self.zernike_mask + self.grating_mask,256) for mask in self.masks]
-##        slm_masks = np.asarray(slm_masks).astype(np.uint8)
+##        print(np.shape(self.create_full_mask(self.masks[0])),np.shape(self.base_mask), type(self.zernike_mask), np.shape(self.grating_mask))
+        slm_masks = [self.create_full_mask(mask) + self.base_mask + self.zernike_mask + self.grating_mask for mask in self.masks]
+##        slm_masks = np.mod(slm_masks,256)
         return slm_masks
         
     def create_mask(self,uniform_bool=None):
         if uniform_bool is None:
             uniform_bool = self.uniform
-        newmask = np.zeros((self.segment_rows, self.segment_cols), np.uint8)
+        newmask = np.zeros((self.segment_rows, self.segment_cols),dtype=np.uint8)
         if uniform_bool == False:
             for i in range(int(self.segment_rows*self.segment_cols*.1)):
                 newmask[np.random.randint(0, self.segment_rows), np.random.randint(0,self.segment_cols)] = np.random.choice(self.phase_vals)
@@ -117,20 +117,33 @@ class Population:
 ##        plt.imshow(self.zernike_mask)
 ##        plt.colorbar()
 ##        plt.show()
-
-
+    
+    def change_parent_zcoeff(self,newcoeff):
+        if self.single_zcoeff == True:
+            self.masks = [(mask/self.single_zcoeff_val*newcoeff).astype(np.uint8) for mask in self.masks]
+        else:
+            print('Warning: zernike mask has more than one coefficient. Cannot rescale!')
+        
     def update_zernike_parent(self,zcoeffs=None):
+        if zcoeffs is None:
+            zcoeffs = self.zernike_coeffs
+        zcoeffs=np.array(zcoeffs,dtype=np.int)
+        if np.shape(np.nonzero(zcoeffs))[0]==1:
+            self.single_zcoeff = True
+            self.single_zcoeff_val = zcoeffs[np.nonzero(zcoeffs)]
+        else:
+            self.single_zcoeff = False
         self.masks = [self.create_zernike_mask(zcoeffs)]
     
     def create_zernike_mask(self,zcoeffs=None):
-##        print(self.zernike_coeffs)
         if zcoeffs is None:
             zcoeffs = self.zernike_coeffs
         newmask = self.create_full_mask(self.create_mask(True))
         for i,coefficient in enumerate(zcoeffs):
-            num = i+3
-            func = getattr(self.zernike,'z'+str(num))
-            newmask += np.mod((coefficient*np.fromfunction(func,(self.slm_height, self.slm_width))).astype(np.uint8),256).astype(np.uint8)
+            if coefficient != 0:
+                num = i+3
+                func = getattr(self.zernike,'z'+str(num))
+                newmask += (int(coefficient)*np.fromfunction(func,(self.slm_height, self.slm_width))).astype(np.uint8)
         return newmask
 
 ####################################### End Zernike #######################################################################
@@ -150,9 +163,8 @@ class Population:
             step = self.grating_step
         if step==0:
             return newmask
-        pattern = np.mod(np.arange(0,int(self.slm_width),1)*step,256).astype(np.uint8)
+        pattern = np.arange(0,int(self.slm_width),1,dtype=np.uint8)*step
         newmask += np.kron(pattern,np.ones((int(self.slm_height),1),dtype=np.uint8))
-        print('s2', np.shape(newmask))
         return newmask
     
 ####################################### End Grating #######################################################################
@@ -176,7 +188,7 @@ class Population:
         ranks = np.argsort(self.fitness_vals)
         self.fitness_vals = np.array(self.fitness_vals)[ranks].tolist()
         self.masks = np.array(self.masks)[ranks].tolist()
-        self.output_fields = np.array(self.output_fields)[ranks].tolist()
+        self.output_fields = np.array(self.output_fields,dtype=np.int)[ranks].tolist()
         
     
     def make_children(self,add_uniform=False):
@@ -202,13 +214,13 @@ class Population:
     def breed(self):
         """Breed two "parent" masks and return new mutated "child" input mask array."""
         pidx = np.random.choice(len(self.masks),size=2,replace=False,p=self.parent_probability_dist)
-        parents = [np.array(self.masks[pidx[0]]),np.array(self.masks[pidx[1]])]
+        parents = [np.array(self.masks[pidx[0]],dtype=np.uint8),np.array(self.masks[pidx[1]],dtype=np.uint8)]
         shape = parents[0].shape
         rand_matrix = np.random.choice([True,False],size=shape).reshape(shape)
         child = parents[0]*rand_matrix+parents[1]*np.invert(rand_matrix)
         for i in range(self.num_mutations):
             child[np.random.randint(0,shape[0]),np.random.randint(0,shape[1])] = np.random.choice(self.phase_vals)
-        return child.astype(np.uint8)
+        return child
 
     def fitness(self, output_field,func=None):
         """Return the mean of output_field.
@@ -248,7 +260,7 @@ class Zernike:
     def __init__(self, population):
         self.x0 = int(population.segment_cols*population.segment_width/2)
         self.y0 = int(population.segment_rows*population.segment_height/2)
-        self.scale = 2/(2*self.y0)
+        self.scale = 1/self.y0
 ##        self.scale = 1000**2/(2*self.x0)*2.5*10**-6
 
     def z3(self,y,x):
