@@ -60,7 +60,7 @@ class Optimizer:
                 self.metrics['masks'].append(np.array(population.get_masks()[-1]).flatten())
         if update_type == 'final':
             self.metrics['roi'][-1]=self.metrics['roi'][-2]
-            if save_mask==True:
+            if save_mask==True and len(self.metrics['masks'])>1:
                 self.metrics['masks'][-1]=self.metrics['masks'][-2]
 
     def reset_time(self):
@@ -86,7 +86,7 @@ class Optimizer:
         final_mask = self.parent_masks.get_masks()[-1]
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         uniform_pop.update_masks([final_mask])
-        self.interface.get_output_fields(uniform_pop,repeate=self.num_masks_initial_metrics)
+        self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
         self.update_metrics(uniform_pop, 'final')
         self.get_final_mean_intensity()
         
@@ -163,12 +163,12 @@ class Optimizer:
                 continue
             print('\nOptimizing Zernike Mode',str(zmode))
             # Course search
-            snum = 10
-            coeffs = np.arange(coeff_range[0],coeff_range[1],snum)
+            snum = 20
+            coeffs = np.arange(coeff_range[0],coeff_range[1]+1,snum)
             best_coeff = self.get_best_coefficient(zmode,coeffs)
             
             # Fine Search
-            coeffs = np.arange(best_coeff-snum,best_coeff+snum,1)
+            coeffs = np.arange(best_coeff-snum,best_coeff+snum,2)
             best_coeff = self.get_best_coefficient(zmode,coeffs)
             
             base_mask += self.parent_masks.create_zernike_mask(self.get_coeff_list(zmode,best_coeff))
@@ -196,10 +196,11 @@ class Optimizer:
         print('coeff',end='')
         for i,coeff in enumerate(coeffs):
             print('...'+str(coeff),end='')
-            if i==0 or coeffs[i-1]==0 or coeff==0:
-                self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
-            else:
-                self.parent_masks.change_parent_zcoeff(coeff)
+            self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
+##            if i==0 or coeffs[i-1]==0 or coeff==0:
+##                self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
+##            else:
+##                self.parent_masks.change_parent_zcoeff(coeff)
             self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
             self.interface.get_output_fields(self.parent_masks)
             self.update_metrics(save_mask=False)

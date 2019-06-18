@@ -35,8 +35,8 @@ def main(args):
 ##                args.segment_height = 48
                 args.segment_width = segment[0]
                 args.segment_height = segment[1]
-                args.gens = 10
-                args.num_initial_metrics = 500
+                args.gens = 1000
+                args.num_initial_metrics = 50
                 args.num_masks = 30
 
                       
@@ -44,7 +44,8 @@ def main(args):
 ##                gopt.run_genetic()
                 
                 zopt = Optimizer.Optimizer(args,interface)
-                zopt.run_zernike(modes,[-250,250])
+                zopt.run_zernike(modes,[-240,240])
+##                zopt.run_zernike(modes,[-20,20])
                 print('\n\nDONE............\n\n') 
 
             

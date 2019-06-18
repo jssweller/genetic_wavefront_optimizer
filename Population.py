@@ -121,6 +121,7 @@ class Population:
     def change_parent_zcoeff(self,newcoeff):
         if self.single_zcoeff == True:
             self.masks = [(mask/self.single_zcoeff_val*newcoeff).astype(np.uint8) for mask in self.masks]
+            self.single_zcoeff_val=newcoeff
         else:
             print('Warning: zernike mask has more than one coefficient. Cannot rescale!')
         
