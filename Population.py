@@ -3,7 +3,7 @@ import win32pipe as wp
 import win32file as wf
 import matplotlib.pyplot as plt
 import pyscreenshot as ImageGrab
-import time, datetime, sys, os, argparse
+import time, datetime, sys, os, argparse, copy
 
 class Population:
     def __init__(self, args, base_mask=0, uniform=False):
@@ -196,7 +196,7 @@ class Population:
         num_uniform=0
         if add_uniform:
             num_uniform=2
-        child_args = self.args
+        child_args = copy.copy(self.args)
         child_args.num_masks = self.num_childs
         child_args.zernike_coeffs = self.zernike_coeffs
         children = Population(child_args,self.base_mask)

@@ -3,7 +3,7 @@ import win32pipe as wp
 import win32file as wf
 import matplotlib.pyplot as plt
 import pyscreenshot as ImageGrab
-import time, datetime, sys, os, argparse
+import time, datetime, sys, os, argparse,copy
 
 import Interface, Population
 
@@ -70,7 +70,7 @@ class Optimizer:
         return datetime.timedelta(seconds=time.time()-self.time_start)
         
     def get_initial_metrics(self):
-        args0 = self.args
+        args0 = copy.copy(self.args)
         args0.zernike_coeffs = [0]
         args0.num_masks = 1
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
@@ -81,7 +81,7 @@ class Optimizer:
         np.savetxt(self.save_path+'/initial_mean_intensity_roi.txt', initial_mean_intensity, fmt='%d')
         
     def get_final_metrics(self):
-        args0 = self.args
+        args0 = copy.copy(self.args)
         self.parent_masks.ranksort()
         final_mask = self.parent_masks.get_masks()[-1]
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
@@ -91,7 +91,7 @@ class Optimizer:
         self.get_final_mean_intensity()
         
     def get_final_mean_intensity(self):
-        args0 = self.args
+        args0 = copy.copy(self.args)
         args0.num_masks = 1
         args0.zernike_coeffs = [0]
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
@@ -148,7 +148,7 @@ class Optimizer:
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
         best_zmodes = np.zeros(13)
         self.init_metrics()
-        args0 = self.args
+        args0 = copy.copy(self.args)
         args0.num_masks=1
         args0.fitness_func = 'spot'
         self.save_path=self.save_path+'/zernike'
