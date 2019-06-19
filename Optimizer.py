@@ -3,7 +3,7 @@ import win32pipe as wp
 import win32file as wf
 import matplotlib.pyplot as plt
 import pyscreenshot as ImageGrab
-import time, datetime, sys, os, argparse,copy
+import time, datetime, sys, os, argparse, copy, __main__
 
 import Interface, Population
 
@@ -99,7 +99,7 @@ class Optimizer:
         final_mean_intensity = self.parent_masks.get_output_fields()
         np.savetxt(self.save_path+'/final_mean_intensity_roi.txt', final_mean_intensity, fmt='%d')
         file = open(self.save_path+'/log.txt','a')
-        file.write('\nFinal Avg Intensity: '+str(np.mean(final_mean_intensity)))
+        file.write('Final Avg Intensity: '+str(np.mean(final_mean_intensity))+'\n')
         file.close()
     
     
@@ -216,15 +216,17 @@ class Optimizer:
     def initial_log(self):
         os.makedirs(self.save_path, exist_ok=True)
         file = open(self.save_path+'/log.txt','w+')
-        file.write('This is the log file for wave_opt.py.\n\n')
-        file.write('Run_name: '+self.save_path+'\n\n')
-        file.write('Parameters:\n')
+        file.write('Main script: '+str(os.path.realpath(__main__.__file__))+'\n\n')
+        file.write('Save path: '+os.path.dirname(os.path.realpath(self.save_path+'/log.txt'))+'\n\n')
+        file.write('#### Parameters ####:\n\n')
 
-        file.write('\nmode coefficients='+str(self.zernike_coeffs))
+        file.write('mode coefficients='+str(self.zernike_coeffs))
         for arg in vars(self.args):
             file.write('\n'+str(arg)+'='+str(getattr(self.args, arg)))
-
-        file.write('\n\ninitial metrics time: '+str(self.get_time()))
+            
+        file.write('\n\n#### Metrics ####:\n\n')
+        file.write('initial metrics time: '+str(self.get_time())+'\n')
+        file.write('Initial Avg Intensity: '+str(self.metrics['mean'][0])+'\n')
         file.close()
     
     def initial_zernike_log(self,zmodes,coeff_range):
@@ -232,21 +234,22 @@ class Optimizer:
         file = open(self.save_path+'/log.txt','w+')
         file.write('This is the zernike log file for wave_opt.py.\n\n')
         file.write('Run_name: '+self.save_path+'\n\n')
-        file.write('Parameters:\n')
-        file.write('\nzernike modes: '+str(zmodes))
-        file.write('\ncoefficient range: '+str(coeff_range))
+        file.write('Parameters:\n\n')
+        file.write('zernike modes: '+str(zmodes)+'\n')
+        file.write('coefficient range: '+str(coeff_range))
         for arg in vars(self.args):
             file.write('\n'+str(arg)+'='+str(getattr(self.args, arg)))
-            
-        file.write('\n\ninitial metrics time: '+str(self.get_time()))
+
+        file.write('\n\n#### Metrics ####:\n\n')    
+        file.write('initial metrics time: '+str(self.get_time())+'\n')
         file.close()
     
     def final_log(self):
         file = open(self.save_path+'/log.txt','a')
-        file.write('\nFinal Spot Metric: '+str(1/self.metrics['spot'][-1]))
-        file.write('\nFinal Spot Enhancement: '+str(self.metrics['spot'][0]/self.metrics['spot'][-1]))          
-        file.write('\nFinal Intensity Enhancement: '+str(self.metrics['maxint'][-1]/self.metrics['maxint'][0]))
-        file.write('\n\nOptimization Time: '+str(self.get_time()))
+        file.write('Final Spot Metric: '+str(1/self.metrics['spot'][-1])+'\n')
+        file.write('Final Spot Enhancement: '+str(self.metrics['spot'][0]/self.metrics['spot'][-1])+'\n')          
+        file.write('Final Intensity Enhancement: '+str(self.metrics['maxint'][-1]/self.metrics['maxint'][0])+'\n\n')
+        file.write('Optimization Time: '+str(self.get_time())+'\n')
         file.close()
         
         
