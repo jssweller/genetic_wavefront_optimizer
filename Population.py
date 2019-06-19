@@ -18,6 +18,7 @@ class Population:
         self.num_phase_vals = args.num_phase_vals
         self.fitness_func = args.fitness_func
         self.uniform = uniform
+        self.uniform_childs = args.add_uniform_childs
 
         self.mutate_initial_rate = args.mutate_initial_rate
         self.mutate_final_rate = args.mutate_final_rate
@@ -173,19 +174,25 @@ class Population:
     def init_masks(self):
         self.masks=[]
         for i in range(self.num_masks):
-            if i<10:
+            if self.uniform_childs and i>=(self.num_masks-2):
                 self.masks.append(self.create_mask(True))
             else:
                 self.masks.append(self.create_mask())
                 
 
-    def update_fitness_vals(self):
+    def update_fitness_vals(self,scale=0):
+        if scale != 0:
+            uniform_intensity = np.mean(np.mean((self.output_fields[-2:]),axis=1)) # mean intensity of uniform masks' output fields
+            self.output_fields = (self.output_fields.astype(np.float)*scale/uniform_intensity).astype(np.int)
+##            print('\nscale1',uniform_intensity)
+
         self.fitness_vals = [self.fitness(field) for field in self.output_fields]
+
             
             
-    def ranksort(self):
+    def ranksort(self, scale=0):
         """Sort masks by fitness value"""
-        self.update_fitness_vals()
+        self.update_fitness_vals(scale=scale)
         ranks = np.argsort(self.fitness_vals)
         self.fitness_vals = np.array(self.fitness_vals)[ranks].tolist()
         self.masks = np.array(self.masks)[ranks].tolist()

@@ -52,7 +52,7 @@ class Interface:
                 read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
                 read_array = list(read_pipe[1])
                 roi_list.append(read_array[0::3])
-##        print('\nInterface Time (seconds): ', time.time()-t0)
+##        print('.... Interface Time (seconds):', time.time()-t0, end='')
         population.update_output_fields(roi_list)
         
     

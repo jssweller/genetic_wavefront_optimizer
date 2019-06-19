@@ -69,13 +69,13 @@ class Optimizer:
     def get_time(self):
         return datetime.timedelta(seconds=time.time()-self.time_start)
         
-    def get_initial_metrics(self):
+    def get_initial_metrics(self, save_mask=True):
         args0 = copy.copy(self.args)
         args0.zernike_coeffs = [0]
         args0.num_masks = 1
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
-        self.update_metrics(uniform_pop, 'initial')
+        self.update_metrics(uniform_pop, 'initial',save_mask=save_mask)
         initial_mean_intensity = self.parent_masks.get_output_fields()
         os.makedirs(self.save_path, exist_ok=True)
         np.savetxt(self.save_path+'/initial_mean_intensity_roi.txt', initial_mean_intensity, fmt='%d')
@@ -106,16 +106,25 @@ class Optimizer:
     def run_generation(self):
         if self.gen==1:
             self.interface.get_output_fields(self.parent_masks)
-            self.parent_masks.ranksort()
+            
+            if self.measure_all:
+                self.parent_masks.ranksort()
+            else:
+                self.uniform_scale = np.mean(np.mean(self.parent_masks.get_output_fields()[-2:],axis=1))
+                self.parent_masks.ranksort(scale=self.uniform_scale)
+##                print('\nscale0',self.uniform_scale)
+                
             self.update_metrics()
 
         self.child_masks = self.parent_masks.make_children(self.uniform_childs)
         self.interface.get_output_fields(self.child_masks)
-        self.child_masks.ranksort()
-        
+                
         if self.measure_all:
+            self.child_masks.ranksort()
             self.interface.get_output_fields(self.parent_masks)
             self.parent_masks.ranksort()
+        else:
+            self.child_masks.ranksort(scale=self.uniform_scale)
         
         self.parent_masks.replace_parents(self.child_masks)
         self.update_metrics()
@@ -132,11 +141,13 @@ class Optimizer:
         self.initial_log()
         self.reset_time()
         while self.gen <= numgens:
-            print('generation',self.gen,' ....',end='\t')
+            t0 = time.time()
+            print('generation',self.gen,end=' ....\t')
             self.parent_masks.update_num_mutations(self.gen,numgens)
             self.run_generation()
             if self.gen % int(numgens/4)==0:
                 self.save_checkpoint()
+            print('Time', round(time.time()-t0,2),'s', end=' ....\t')
             print('Fitness:', round(max(self.parent_masks.get_fitness_vals()),2))
 
         self.get_final_metrics()
@@ -150,11 +161,13 @@ class Optimizer:
         self.init_metrics()
         args0 = copy.copy(self.args)
         args0.num_masks=1
+        args0.zernike_coeffs=[0]
         args0.fitness_func = 'spot'
         self.save_path=self.save_path+'/zernike'
         initial_base_mask = self.base_mask
         base_mask = self.base_mask
-        self.parent_masks = Population.Population(args0,base_mask)        
+        self.parent_masks = Population.Population(args0,base_mask)
+        self.get_initial_metrics(save_mask=False)
         self.initial_zernike_log(zmodes,coeff_range)
         
         for zmode in zmodes:
@@ -175,7 +188,7 @@ class Optimizer:
             self.parent_masks.update_base_mask(base_mask)
             best_zmodes += self.get_coeff_list(zmode,best_coeff)
         
-        np.savetxt(self.save_path+'/zmodes.txt',best_zmodes, fmt='%d')
+        np.savetxt(self.save_path+'/optimized_zmodes.txt',best_zmodes, fmt='%d')
         self.parent_masks.update_masks([self.parent_masks.create_mask(True)])
         
         self.base_mask = initial_base_mask
@@ -220,28 +233,30 @@ class Optimizer:
         file.write('Save path: '+os.path.dirname(os.path.realpath(self.save_path+'/log.txt'))+'\n\n')
         file.write('#### Parameters ####:\n\n')
 
-        file.write('mode coefficients='+str(self.zernike_coeffs))
+        file.write('Mode coefficients='+str(self.zernike_coeffs))
         for arg in vars(self.args):
             file.write('\n'+str(arg)+'='+str(getattr(self.args, arg)))
             
         file.write('\n\n#### Metrics ####:\n\n')
-        file.write('initial metrics time: '+str(self.get_time())+'\n')
+        file.write('Initial metrics time: '+str(self.get_time())+'\n')
         file.write('Initial Avg Intensity: '+str(self.metrics['mean'][0])+'\n')
         file.close()
     
     def initial_zernike_log(self,zmodes,coeff_range):
         os.makedirs(self.save_path, exist_ok=True)
         file = open(self.save_path+'/log.txt','w+')
-        file.write('This is the zernike log file for wave_opt.py.\n\n')
-        file.write('Run_name: '+self.save_path+'\n\n')
-        file.write('Parameters:\n\n')
-        file.write('zernike modes: '+str(zmodes)+'\n')
-        file.write('coefficient range: '+str(coeff_range))
+        file.write('Main script: '+str(os.path.realpath(__main__.__file__))+'\n\n')
+        file.write('Save path: '+os.path.dirname(os.path.realpath(self.save_path+'/log.txt'))+'\n\n')
+        file.write('#### Parameters ####:\n\n')
+
+        file.write('Zernike modes: '+str(zmodes)+'\n')
+        file.write('Coefficient range: '+str(coeff_range))
         for arg in vars(self.args):
             file.write('\n'+str(arg)+'='+str(getattr(self.args, arg)))
 
         file.write('\n\n#### Metrics ####:\n\n')    
-        file.write('initial metrics time: '+str(self.get_time())+'\n')
+        file.write('Initial metrics time: '+str(self.get_time())+'\n')
+        file.write('Initial Avg Intensity: '+str(self.metrics['mean'][0])+'\n')
         file.close()
     
     def final_log(self):

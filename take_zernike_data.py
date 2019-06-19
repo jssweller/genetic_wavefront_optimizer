@@ -3,19 +3,20 @@ import win32pipe as wp
 import win32file as wf
 import matplotlib.pyplot as plt
 import pyscreenshot as ImageGrab
-import time, datetime, sys, os, argparse, gc
+import time, datetime, sys, os, argparse, gc, copy
 
 import Optimizer, Interface, Population
 
 
 def main(args):
     interface = Interface.Interface(args)
+    args0 = copy.copy(args)
     
-    start_num = '6-19'
+    start_num = '6-19_run2'
     coeffs = [50,100,150,200]
     modes = np.arange(13)+3
 
-    segments = [[64,96],[64,48],[32,48],[32,24]]
+    segments = [[64,96]]#,[64,48],[32,48],[32,24]]
 
 ##    modes = [3]
     
@@ -25,6 +26,7 @@ def main(args):
                 gc.collect()
                 clist = np.zeros(13)
                 clist[mode-3]=coeff
+                args = copy.copy(args0)
                 args.zernike_coeffs = clist.tolist()
 
 ##                args.grating_step = 16
@@ -34,10 +36,11 @@ def main(args):
 ##                args.segment_height = 48
                 args.segment_width = segment[0]
                 args.segment_height = segment[1]
-                args.gens = 1000
-                args.num_initial_metrics = 500
+                args.gens = 400
+                args.num_initial_metrics = 100
                 args.num_masks = 30
                 args.fitness_func = 'max'
+                args.measure_all=False
                 
                 segment_save = '/'+str(args.segment_height)+'_'+str(args.segment_width)
                 args.save_path = '../run_'+str(start_num)+'/mode_'+str(mode)+'_coeff_'+str(coeff) + segment_save
