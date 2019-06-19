@@ -149,7 +149,7 @@ class Optimizer:
         best_zmodes = np.zeros(13)
         self.init_metrics()
         args0 = self.args
-        args0.pop=1
+        args0.num_masks=1
         args0.fitness_func = 'spot'
         self.save_path=self.save_path+'/zernike'
         initial_base_mask = self.base_mask

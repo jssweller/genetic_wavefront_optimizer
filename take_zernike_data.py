@@ -11,7 +11,7 @@ import Optimizer, Interface, Population
 def main(args):
     interface = Interface.Interface(args)
     
-    start_num = 2
+    start_num = '6-19'
     coeffs = [50,100,150,200]
     modes = np.arange(13)+3
 
@@ -26,8 +26,6 @@ def main(args):
                 clist = np.zeros(13)
                 clist[mode-3]=coeff
                 args.zernike_coeffs = clist.tolist()
-        
-                args.save_path = '../run_'+str(start_num)+'/mode_'+str(mode)+'_coeff_'+str(coeff)
 
 ##                args.grating_step = 16
                 args.slm_width = 1024
@@ -39,19 +37,23 @@ def main(args):
                 args.gens = 1000
                 args.num_initial_metrics = 500
                 args.num_masks = 30
+                args.fitness_func = 'max'
+                
+                segment_save = '/'+str(args.segment_height)+'_'+str(args.segment_width)
+                args.save_path = '../run_'+str(start_num)+'/mode_'+str(mode)+'_coeff_'+str(coeff) + segment_save
 
-                      
                 gopt = Optimizer.Optimizer(args,interface)
                 gopt.run_genetic()
                 gopt=0
                 print('\n\nDONE with genetic optimization............\n\n')
                 gc.collect()
-                
-                zopt = Optimizer.Optimizer(args,interface)
-                zopt.run_zernike(modes,[-240,240])
+
+            args.save_path = '../run_'+str(start_num)+'/mode_'+str(mode)+'_coeff_'+str(coeff)    
+            zopt = Optimizer.Optimizer(args,interface)
+            zopt.run_zernike(modes,[-240,240])
 ##                zopt.run_zernike(modes,[-20,20])
-                zopt=0
-                print('\n\nDONE with zernike optimization............\n\n') 
+            zopt=0
+            print('\n\nDONE with zernike optimization............\n\n') 
 
             
 if __name__ == '__main__':
