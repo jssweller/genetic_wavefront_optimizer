@@ -3,7 +3,7 @@ import win32pipe as wp
 import win32file as wf
 import matplotlib.pyplot as plt
 import pyscreenshot as ImageGrab
-import time, datetime, sys, os, argparse
+import time, datetime, sys, os, argparse, copy
 
 import Interface, Population
 
@@ -135,14 +135,18 @@ class Optimizer:
             print('generation',self.gen,' ....',end='\t')
             self.parent_masks.update_num_mutations(self.gen,numgens)
             self.run_generation()
-            if self.gen % int(numgens/4)==0:
-                self.save_checkpoint()
+            if self.gen % int(numgens/4-1)==0:
+                if self.gen == int(numgens/4-1):
+                    self.save_checkpoint(True)
+                else:
+                    self.save_checkpoint()
             print('Fitness:', round(max(self.parent_masks.get_fitness_vals()),2))
 
         self.get_final_metrics()
-        self.save_checkpoint()
+        print('spot:',self.metrics['spot'])
         self.final_log()
         self.save_plots()
+        self.save_checkpoint()
         
     def run_zernike(self, zmodes, coeff_range):
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
@@ -180,9 +184,9 @@ class Optimizer:
         
         self.base_mask = initial_base_mask
         self.get_final_metrics()
-        self.save_checkpoint()
         self.final_log()
         self.save_plots()
+        self.save_checkpoint()
         self.save_path = args0.save_path
         
     def get_coeff_list(self,zmode,coeff):
@@ -250,15 +254,24 @@ class Optimizer:
         file.close()
         
         
-    def save_checkpoint(self):
-        np.savetxt(self.save_path+'/spot_metric_vals_checkpoint.txt', 1/np.asarray(self.metrics['spot']), fmt='%10.3f')
-        np.savetxt(self.save_path+'/max_metric_vals_checkpoint.txt', self.metrics['maxmet'], fmt='%10.3f')
-        np.savetxt(self.save_path+'/mean_intensity_vals_checkpoint.txt', self.metrics['mean'], fmt='%10.3f')
-        np.savetxt(self.save_path+'/max_intensity_vals_checkpoint.txt', self.metrics['maxint'], fmt='%d')
-        np.savetxt(self.save_path+'/roi.txt', self.metrics['roi'], fmt='%d')
-        np.savetxt(self.save_path+'/masks.txt',self.metrics['masks'], fmt='%d')
+    def save_to_file(self,file,data,fmt,overwrite=False):
+        with open(file, 'a') as myfile:
+            if os.path.isdir(file) and overwrite==False:
+                myfile.write('\n')
+                np.savetxt(myfile, data, fmt=fmt)
+            else:
+                np.savetxt(myfile, data, fmt=fmt)
+
+    def save_checkpoint(self,overwrite=False):
+        self.save_to_file(self.save_path+'/spot_metric_vals_checkpoint.txt', self.metrics['spot'], fmt='%10.3f', overwrite=overwrite)
+        self.save_to_file(self.save_path+'/max_metric_vals_checkpoint.txt', self.metrics['maxmet'], fmt='%10.3f', overwrite=overwrite)
+        self.save_to_file(self.save_path+'/mean_intensity_vals_checkpoint.txt', self.metrics['mean'], fmt='%10.3f', overwrite=overwrite)
+        self.save_to_file(self.save_path+'/max_intensity_vals_checkpoint.txt', self.metrics['maxint'], fmt='%d', overwrite=overwrite)
+        self.save_to_file(self.save_path+'/roi.txt', self.metrics['roi'], fmt='%d', overwrite=overwrite)
+        self.save_to_file(self.save_path+'/masks.txt',self.metrics['masks'], fmt='%d', overwrite=overwrite)
         if not isinstance(self.parent_masks.get_base_mask(),int):
-            np.savetxt(self.save_path+'/base_mask.txt',self.parent_masks.get_base_mask(), fmt = '%d')
+            self.save_to_file(self.save_path+'/base_mask.txt',self.parent_masks.get_base_mask(), fmt = '%d', overwrite=overwrite)
+        self.init_metrics()
         
     def save_plots(self):
         plt.figure()
