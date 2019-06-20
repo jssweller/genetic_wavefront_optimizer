@@ -19,6 +19,7 @@ class Population:
         self.fitness_func = args.fitness_func
         self.uniform = uniform
         self.uniform_childs = args.add_uniform_childs
+        self.num_uniform = 2
 
         self.mutate_initial_rate = args.mutate_initial_rate
         self.mutate_final_rate = args.mutate_final_rate
@@ -174,7 +175,7 @@ class Population:
     def init_masks(self):
         self.masks=[]
         for i in range(self.num_masks):
-            if self.uniform_childs and i>=(self.num_masks-2):
+            if self.uniform_childs and (i>=(self.num_masks-2) or i<2):
                 self.masks.append(self.create_mask(True))
             else:
                 self.masks.append(self.create_mask())
@@ -182,7 +183,7 @@ class Population:
 
     def update_fitness_vals(self,scale=0):
         if scale != 0:
-            uniform_intensity = np.mean(np.mean((self.output_fields[-2:]),axis=1)) # mean intensity of uniform masks' output fields
+            uniform_intensity = np.mean([self.output_fields[:self.num_uniform],self.output_fields[-self.num_uniform:]]) # mean intensity of uniform masks' output fields
             self.output_fields = (self.output_fields.astype(np.float)*scale/uniform_intensity).astype(np.int)
 ##            print('\nscale1',uniform_intensity)
 
@@ -200,16 +201,15 @@ class Population:
         
     
     def make_children(self,add_uniform=False):
-        num_uniform=0
-        if add_uniform:
-            num_uniform=2
         child_args = copy.copy(self.args)
         child_args.num_masks = self.num_childs
         child_args.zernike_coeffs = self.zernike_coeffs
         children = Population(child_args,self.base_mask)
-        new_masks = [self.breed() for i in range(self.num_childs-num_uniform)]
-        for i in range(num_uniform):
-            new_masks.append(self.create_mask(True))
+        new_masks = [self.breed() for i in range(self.num_childs)]
+        if add_uniform:
+            for i in range(self.num_uniform):
+                new_masks.append(self.create_mask(True))
+                new_masks.insert(0,self.create_mask(True))
         children.update_masks(new_masks)
         return children
 

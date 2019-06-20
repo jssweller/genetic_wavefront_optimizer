@@ -110,8 +110,8 @@ class Optimizer:
             if self.measure_all:
                 self.parent_masks.ranksort()
             else:
-                self.uniform_scale = np.mean(np.mean(self.parent_masks.get_output_fields()[-2:],axis=1))
-                self.parent_masks.ranksort(scale=self.uniform_scale)
+                self.uniform_scale = np.mean([self.parent_masks.get_output_fields()[:2],self.parent_masks.get_output_fields()[-2:]])
+                self.parent_masks.ranksort()
 ##                print('\nscale0',self.uniform_scale)
                 
             self.update_metrics()
