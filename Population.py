@@ -76,6 +76,7 @@ class Population:
                 self.masks[idx]=cmasks[i]
                 self.fitness_vals[idx]=cval
                 self.output_fields[idx]=cfields[i]
+        self.ranksort()
                 
     
     def update_masks(self,new_masks):
