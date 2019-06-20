@@ -76,6 +76,7 @@ class Population:
                 self.masks[idx]=cmasks[i]
                 self.fitness_vals[idx]=cval
                 self.output_fields[idx]=cfields[i]
+        self.ranksort()
                 
     
     def update_masks(self,new_masks):
@@ -183,10 +184,12 @@ class Population:
     def update_fitness_vals(self,scale=0):
         if scale != 0:
             uniform_intensity = np.mean([self.output_fields[:self.num_uniform],self.output_fields[-self.num_uniform:]]) # mean intensity of uniform masks' output fields
-            self.output_fields = (self.output_fields.astype(np.float)*scale/uniform_intensity).astype(np.int)
+##            self.output_fields = (self.output_fields.astype(np.float)*scale/uniform_intensity).astype(np.int)
+            outfields = (self.output_fields.astype(np.float)*scale/uniform_intensity).astype(np.int)
+            self.fitness_vals = [self.fitness(field) for field in outfields]
 ##            print('\nscale1',uniform_intensity)
-
-        self.fitness_vals = [self.fitness(field) for field in self.output_fields]
+        else:
+            self.fitness_vals = [self.fitness(field) for field in self.output_fields]
 
             
             

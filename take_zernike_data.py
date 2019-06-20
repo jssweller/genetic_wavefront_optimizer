@@ -12,44 +12,46 @@ def main(args):
     interface = Interface.Interface(args)
     args0 = copy.copy(args)
     
-    start_num = '6-19_run2'
+    start_num = '6-19_run4'
     coeffs = [50,100,150,200]
     modes = np.arange(13)+3
 
-    segments = [[64,96]]#,[64,48],[32,48],[32,24]]
+##    segments = [[64,96],[64,48],[32,48],[32,24]]
+    segments = [[64,96],[32,48]]
 
 ##    modes = [3]
     
     for mode in modes:
         for coeff in coeffs:
             for segment in segments:
-                gc.collect()
-                clist = np.zeros(13)
-                clist[mode-3]=coeff
-                args = copy.copy(args0)
-                args.zernike_coeffs = clist.tolist()
+                for measure in [False,True]:
+                    gc.collect()
+                    clist = np.zeros(13)
+                    clist[mode-3]=coeff
+                    args = copy.copy(args0)
+                    args.zernike_coeffs = clist.tolist()
 
-##                args.grating_step = 16
-                args.slm_width = 1024
-                args.slm_height = 768
-##                args.segment_width = 64
-##                args.segment_height = 48
-                args.segment_width = segment[0]
-                args.segment_height = segment[1]
-                args.gens = 400
-                args.num_initial_metrics = 100
-                args.num_masks = 30
-                args.fitness_func = 'max'
-                args.measure_all=False
-                
-                segment_save = '/'+str(args.segment_height)+'_'+str(args.segment_width)
-                args.save_path = '../run_'+str(start_num)+'/mode_'+str(mode)+'_coeff_'+str(coeff) + segment_save
+    ##                args.grating_step = 16
+                    args.slm_width = 1024
+                    args.slm_height = 768
+    ##                args.segment_width = 64
+    ##                args.segment_height = 48
+                    args.segment_width = segment[0]
+                    args.segment_height = segment[1]
+                    args.gens = 1000
+                    args.num_initial_metrics = 500
+                    args.num_masks = 30
+                    args.fitness_func = 'max'
+                    args.measure_all = measure
+                    
+                    segment_save = '/'+str(args.segment_height)+'_'+str(args.segment_width)
+                    args.save_path = '../run_'+str(start_num)+'/mode_'+str(mode)+'_coeff_'+str(coeff) + segment_save + '_measure_'+str(measure)
 
-                gopt = Optimizer.Optimizer(args,interface)
-                gopt.run_genetic()
-                gopt=0
-                print('\n\nDONE with genetic optimization............\n\n')
-                gc.collect()
+                    gopt = Optimizer.Optimizer(args,interface)
+                    gopt.run_genetic()
+                    gopt=0
+                    print('\n\nDONE with genetic optimization............\n\n')
+                    gc.collect()
 
             args.save_path = '../run_'+str(start_num)+'/mode_'+str(mode)+'_coeff_'+str(coeff)    
             zopt = Optimizer.Optimizer(args,interface)
