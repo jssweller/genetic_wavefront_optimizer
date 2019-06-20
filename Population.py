@@ -89,9 +89,8 @@ class Population:
     
     def get_slm_masks(self):
         """Return masks to be loaded onto slm."""
-##        print(np.shape(self.create_full_mask(self.masks[0])),np.shape(self.base_mask), type(self.zernike_mask), np.shape(self.grating_mask))
+##        print(type(self.create_full_mask(self.masks[0])),type(self.base_mask), type(self.zernike_mask), type(self.grating_mask))
         slm_masks = [self.create_full_mask(mask) + self.base_mask + self.zernike_mask + self.grating_mask for mask in self.masks]
-##        slm_masks = np.mod(slm_masks,256)
         return slm_masks
         
     def create_mask(self,uniform_bool=None):
@@ -147,7 +146,7 @@ class Population:
                 num = i+3
                 func = getattr(self.zernike,'z'+str(num))
                 newmask += (int(coefficient)*np.fromfunction(func,(self.slm_height, self.slm_width))).astype(np.uint8)
-        return newmask
+        return np.array(newmask,dtype=np.uint8)
 
 ####################################### End Zernike #######################################################################
 

@@ -81,9 +81,10 @@ class Optimizer:
         np.savetxt(self.save_path+'/initial_mean_intensity_roi.txt', initial_mean_intensity, fmt='%d')
         
     def get_final_metrics(self):
+        print('\nGetting final metrics...\n')
         args0 = copy.copy(self.args)
         self.parent_masks.ranksort()
-        final_mask = self.parent_masks.get_masks()[-1]
+        final_mask = np.array(self.parent_masks.get_masks()[-1])
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         uniform_pop.update_masks([final_mask])
         self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
@@ -91,6 +92,7 @@ class Optimizer:
         self.get_final_mean_intensity()
         
     def get_final_mean_intensity(self):
+        print('\nGetting final mean intensity...\n')
         args0 = copy.copy(self.args)
         args0.num_masks = 1
         args0.zernike_coeffs = [0]
@@ -164,8 +166,8 @@ class Optimizer:
         args0.zernike_coeffs=[0]
         args0.fitness_func = 'spot'
         self.save_path=self.save_path+'/zernike'
-        initial_base_mask = self.base_mask
-        base_mask = self.base_mask
+        initial_base_mask = copy.copy(self.base_mask)
+        base_mask = copy.copy(self.base_mask)
         self.parent_masks = Population.Population(args0,base_mask)
         self.get_initial_metrics(save_mask=False)
         self.initial_zernike_log(zmodes,coeff_range)
@@ -189,12 +191,14 @@ class Optimizer:
             best_zmodes += self.get_coeff_list(zmode,best_coeff)
         
         np.savetxt(self.save_path+'/optimized_zmodes.txt',best_zmodes, fmt='%d')
-        self.parent_masks.update_masks([self.parent_masks.create_mask(True)])
+        self.parent_masks.update_zernike_parent(best_zmodes)
+        self.parent_masks.update_base_mask(initial_base_mask)
         
         self.base_mask = initial_base_mask
         self.get_final_metrics()
         self.save_checkpoint()
         self.final_log()
+        self.parent_masks.update_zernike_parent(best_zmodes)
         self.save_plots()
         self.save_path = args0.save_path
         
