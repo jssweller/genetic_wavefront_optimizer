@@ -159,12 +159,13 @@ class Optimizer:
         
     def run_zernike(self, zmodes, coeff_range):
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
+        print('Zernike optimizer running...')
         best_zmodes = np.zeros(13)
         self.init_metrics()
         args0 = copy.copy(self.args)
         args0.num_masks=1
         args0.zernike_coeffs=[0]
-        args0.fitness_func = 'spot'
+        args0.fitness_func = 'max'
         self.save_path=self.save_path+'/zernike'
         initial_base_mask = copy.copy(self.base_mask)
         base_mask = copy.copy(self.base_mask)

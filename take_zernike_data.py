@@ -12,7 +12,7 @@ def main(args):
     interface = Interface.Interface(args)
     args0 = copy.copy(args)
     
-    start_num = '6-19_run4'
+    start_num = '6-20_run1'
     coeffs = [50,100,150,200]
     modes = np.arange(13)+3
 
@@ -24,7 +24,7 @@ def main(args):
     for mode in modes:
         for coeff in coeffs:
             for segment in segments:
-                for measure in [False,True]:
+                for measure in [True]:
                     gc.collect()
                     clist = np.zeros(13)
                     clist[mode-3]=coeff
@@ -56,7 +56,6 @@ def main(args):
             args.save_path = '../run_'+str(start_num)+'/mode_'+str(mode)+'_coeff_'+str(coeff)    
             zopt = Optimizer.Optimizer(args,interface)
             zopt.run_zernike(modes,[-240,240])
-##                zopt.run_zernike(modes,[-20,20])
             zopt=0
             print('\n\nDONE with zernike optimization............\n\n') 
 

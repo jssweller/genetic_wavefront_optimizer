@@ -131,7 +131,7 @@ class Population:
         if zcoeffs is None:
             zcoeffs = self.zernike_coeffs
         zcoeffs=np.array(zcoeffs,dtype=np.int)
-        if np.shape(np.nonzero(zcoeffs))[0]==1:
+        if max(np.shape(np.nonzero(zcoeffs)))==1:
             self.single_zcoeff = True
             self.single_zcoeff_val = zcoeffs[np.nonzero(zcoeffs)]
         else:
