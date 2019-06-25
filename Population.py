@@ -87,9 +87,8 @@ class Population:
     
     def get_slm_masks(self):
         """Return masks to be loaded onto slm."""
-##        print(np.shape(self.create_full_mask(self.masks[0])),np.shape(self.base_mask), type(self.zernike_mask), np.shape(self.grating_mask))
+##        print(type(self.create_full_mask(self.masks[0])),np.shape(self.base_mask), type(self.zernike_mask), type(self.grating_mask))
         slm_masks = [self.create_full_mask(mask) + self.base_mask + self.zernike_mask + self.grating_mask for mask in self.masks]
-##        slm_masks = np.mod(slm_masks,256)
         return slm_masks
         
     def create_mask(self,uniform_bool=None):
@@ -103,7 +102,6 @@ class Population:
     
     def create_full_mask(self,mask):
         segment = np.ones((self.segment_height, self.segment_width),dtype=np.uint8)
-##        print('maskshape: ',np.shape(mask))
         if np.shape(mask)[0] == self.slm_height:
             return mask
         else:
@@ -142,6 +140,7 @@ class Population:
         newmask = self.create_full_mask(self.create_mask(True))
         for i,coefficient in enumerate(zcoeffs):
             if coefficient != 0:
+                #print('mode '+str(i),coefficient)
                 num = i+3
                 func = getattr(self.zernike,'z'+str(num))
                 newmask += (int(coefficient)*np.fromfunction(func,(self.slm_height, self.slm_width))).astype(np.uint8)
@@ -186,10 +185,11 @@ class Population:
     def ranksort(self):
         """Sort masks by fitness value"""
         self.update_fitness_vals()
-        ranks = np.argsort(self.fitness_vals)
-        self.fitness_vals = np.array(self.fitness_vals)[ranks].tolist()
-        self.masks = np.array(self.masks)[ranks].tolist()
-        self.output_fields = np.array(self.output_fields,dtype=np.int)[ranks].tolist()
+        if len(self.masks)>1:
+            ranks = np.argsort(self.fitness_vals)
+            self.fitness_vals = np.array(self.fitness_vals)[ranks].tolist()
+            self.masks = np.array(self.masks)[ranks].tolist()
+            self.output_fields = np.array(self.output_fields,dtype=np.int)[ranks].tolist()
         
     
     def make_children(self,add_uniform=False):
