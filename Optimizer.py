@@ -9,7 +9,7 @@ import Interface, Population
 
 class Optimizer:
     def __init__(self, args, interface, base_mask=0):
-        self.args = args
+        self.args = copy.copy(args)
         self.base_mask = base_mask
         self.zernike_coeffs = args.zernike_coeffs # list of zernike coefficients
         self.grating_step = args.grating_step
@@ -98,7 +98,7 @@ class Optimizer:
         args0.zernike_coeffs = [0]
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
-        final_mean_intensity = self.parent_masks.get_output_fields()
+        final_mean_intensity = uniform_pop.get_output_fields()
         np.savetxt(self.save_path+'/final_mean_intensity_roi.txt', final_mean_intensity, fmt='%d')
         file = open(self.save_path+'/log.txt','a')
         file.write('Final Avg Intensity: '+str(np.mean(final_mean_intensity))+'\n')
@@ -113,9 +113,7 @@ class Optimizer:
                 self.parent_masks.ranksort()
             else:
                 self.uniform_scale = np.mean([self.parent_masks.get_output_fields()[:2],self.parent_masks.get_output_fields()[-2:]])
-                self.parent_masks.ranksort()
-##                print('\nscale0',self.uniform_scale)
-                
+                self.parent_masks.ranksort()                
             self.update_metrics()
 
         self.child_masks = self.parent_masks.make_children(self.uniform_childs)
@@ -194,8 +192,11 @@ class Optimizer:
         np.savetxt(self.save_path+'/optimized_zmodes.txt',best_zmodes, fmt='%d')
         self.parent_masks.update_zernike_parent(best_zmodes)
         self.parent_masks.update_base_mask(initial_base_mask)
+        self.interface.get_output_fields(self.parent_masks)
+        self.update_metrics(save_mask=False)
         
         self.base_mask = initial_base_mask
+        self.zernike_coeffs = [0]
         self.get_final_metrics()
         self.save_checkpoint()
         self.final_log()
@@ -209,8 +210,8 @@ class Optimizer:
         return cfs
     
     def get_best_coefficient(self,zmode,coeffs):
-        best_coeff=coeffs[0]
-        bestval=0
+
+        maxmets=[]
         print('coeff',end='')
         for i,coeff in enumerate(coeffs):
             print('...'+str(coeff),end='')
@@ -222,14 +223,12 @@ class Optimizer:
             self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
             self.interface.get_output_fields(self.parent_masks)
             self.update_metrics(save_mask=False)
-            if i>0:
-                if self.metrics['maxmet'][-1]>bestval:
-                    best_coeff = coeff
-                    bestval = self.metrics['maxmet'][-1]
-            else:
-                best_coeff=coeff
+            maxmets.append(self.metrics['maxmet'][-1])        
         print('\n')
-        return best_coeff
+        best_coeff = np.argmax(maxmets)
+        if not isinstance(best_coeff,np.int64):
+            best_coeff = best_coeff[-1]
+        return coeffs[best_coeff]
     
     def initial_log(self):
         os.makedirs(self.save_path, exist_ok=True)
