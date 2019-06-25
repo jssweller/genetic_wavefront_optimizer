@@ -319,13 +319,21 @@ class Optimizer:
         plt.colorbar()
         plt.savefig(self.save_path+'/end_roi_averaged')
         plt.close()
+
+        plt.figure()
+        plt.imshow(np.array(self.metrics['roi'][1]).reshape(dim,dim))
+        plt.xticks([])
+        plt.yticks([])
+        plt.colorbar()
+        plt.savefig(self.save_path+'/begin_roi')
+        plt.close()
         
         plt.figure()
         plt.imshow(np.array(self.metrics['roi'][0]).reshape(dim,dim))
         plt.xticks([])
         plt.yticks([])
         plt.colorbar()
-        plt.savefig(self.save_path+'/begin_roi')
+        plt.savefig(self.save_path+'/begin_roi_averaged')
         plt.close()
 
         plt.figure(figsize=(12,8))
