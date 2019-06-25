@@ -59,7 +59,7 @@ class Optimizer:
             if save_mask==True:
                 self.metrics['masks'].append(np.array(population.get_masks()[-1]).flatten())
         if update_type == 'final':
-            self.metrics['roi'][-1]=self.metrics['roi'][-2]
+##            self.metrics['roi'][-1]=self.metrics['roi'][-2]
             if save_mask==True and len(self.metrics['masks'])>1:
                 self.metrics['masks'][-1]=self.metrics['masks'][-2]
 
@@ -76,9 +76,8 @@ class Optimizer:
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
         self.update_metrics(uniform_pop, 'initial',save_mask=save_mask)
-        initial_mean_intensity = self.parent_masks.get_output_fields()
         os.makedirs(self.save_path, exist_ok=True)
-        np.savetxt(self.save_path+'/initial_mean_intensity_roi.txt', initial_mean_intensity, fmt='%d')
+        np.savetxt(self.save_path+'/initial_mean_intensity_roi.txt', uniform_pop.get_output_fields(), fmt='%d')
         
     def get_final_metrics(self):
         print('\nGetting final metrics...\n')
@@ -88,6 +87,7 @@ class Optimizer:
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         uniform_pop.update_masks([final_mask])
         self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
+        print('zzz',np.shape(uniform_pop.output_fields))
         self.update_metrics(uniform_pop, 'final')
         self.get_final_mean_intensity()
         
@@ -159,10 +159,11 @@ class Optimizer:
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
         print('Zernike optimizer running...')
         best_zmodes = np.zeros(13)
+        self.args.zernike_coeffs = [0]
         self.init_metrics()
         args0 = copy.copy(self.args)
         args0.num_masks=1
-        args0.zernike_coeffs=[0]
+##        args0.zernike_coeffs=[0]
         args0.fitness_func = 'max'
         self.save_path=self.save_path+'/zernike'
         initial_base_mask = copy.copy(self.base_mask)
@@ -195,8 +196,6 @@ class Optimizer:
         self.interface.get_output_fields(self.parent_masks)
         self.update_metrics(save_mask=False)
         
-        self.base_mask = initial_base_mask
-        self.zernike_coeffs = [0]
         self.get_final_metrics()
         self.save_checkpoint()
         self.final_log()
@@ -305,11 +304,20 @@ class Optimizer:
 
         dim=int(np.sqrt(len(self.metrics['roi'][0])))
         plt.figure()
-        plt.imshow(np.array(self.metrics['roi'][-1]).reshape(dim,dim))
+        plt.imshow(np.array(self.metrics['roi'][-2]).reshape(dim,dim))
         plt.xticks([])
         plt.yticks([])
         plt.colorbar()
         plt.savefig(self.save_path+'/end_roi')
+        plt.close()
+
+        dim=int(np.sqrt(len(self.metrics['roi'][0])))
+        plt.figure()
+        plt.imshow(np.array(self.metrics['roi'][-1]).reshape(dim,dim))
+        plt.xticks([])
+        plt.yticks([])
+        plt.colorbar()
+        plt.savefig(self.save_path+'/end_roi_averaged')
         plt.close()
         
         plt.figure()
