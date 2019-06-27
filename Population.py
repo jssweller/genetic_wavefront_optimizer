@@ -9,6 +9,7 @@ class Population:
     def __init__(self, args, base_mask=0, uniform=False):
         self.args = args
         self.num_masks = args.num_masks
+        self.num_childs = args.num_childs
         self.slm_height = args.slm_height
         self.slm_width = args.slm_width
         self.segment_rows = int(args.slm_height/args.segment_height)
@@ -28,8 +29,6 @@ class Population:
         self.zernike_coeffs = args.zernike_coeffs # list of coefficients for modes 3 up to 15
         self.grating_step = args.grating_step
 
-                
-        self.num_childs = int(round(self.num_masks/2)) # Number of new children per generation
         pstep = 1/sum(np.arange(self.num_masks+1)) # Increment for generating probability distribution.
         self.parent_probability_dist = np.arange(pstep,(self.num_masks+1)*pstep,pstep) # Probability distribution for parent selection.
         self.phase_vals = np.arange(0,args.num_phase_vals,1,dtype=np.uint8) # Distribution of phase values for SLM
@@ -221,6 +220,7 @@ class Population:
         self.num_mutations = int(round(num_segments * ((self.mutate_initial_rate - self.mutate_final_rate)
                                                     * np.exp(-gen / self.mutate_decay_factor)
                                                     + self.mutate_final_rate)))
+        self.num_mutations = max(2,self.num_mutations)
         
     def breed(self):
         """Breed two "parent" masks and return new mutated "child" input mask array."""
