@@ -225,7 +225,7 @@ class Optimizer:
             maxmets.append(self.metrics['maxmet'][-1])        
         print('\n')
         best_coeff = np.argmax(maxmets)
-        if not isinstance(best_coeff,np.int64):
+        if isinstance(best_coeff,np.ndarray):
             best_coeff = best_coeff[-1]
         return coeffs[best_coeff]
     
