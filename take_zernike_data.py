@@ -9,7 +9,7 @@ import Optimizer, Interface, Population
 
 
 def main(args):
-    start_num = '6-25_run1'
+    start_num = '6-27_run1'
     folder = '../run_'+str(start_num)
     os.makedirs(folder,exist_ok=True)
     shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
@@ -36,7 +36,7 @@ def main(args):
     
     for mode in modes:
         args = copy.copy(args0)
-        args.save_path = 'take_test_data/test_run_'+str(start_num)+'/mode_'+str(mode)+'_zopt'
+        args.save_path = folder+'/mode_'+str(mode)+'_zopt'
 
         zopt = Optimizer.Optimizer(args,interface)
         zopt.run_zernike(modes,[-240,240])
