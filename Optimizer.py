@@ -87,7 +87,6 @@ class Optimizer:
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         uniform_pop.update_masks([final_mask])
         self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
-        print('zzz',np.shape(uniform_pop.output_fields))
         self.update_metrics(uniform_pop, 'final')
         self.get_final_mean_intensity()
         
@@ -165,7 +164,7 @@ class Optimizer:
         args0.num_masks=1
 ##        args0.zernike_coeffs=[0]
         args0.fitness_func = 'max'
-        self.save_path=self.save_path+'/zernike'
+##        self.save_path=self.save_path+'/zernike'
         initial_base_mask = copy.copy(self.base_mask)
         base_mask = copy.copy(self.base_mask)
         self.parent_masks = Population.Population(args0,base_mask)

@@ -3,16 +3,28 @@ import win32pipe as wp
 import win32file as wf
 import matplotlib.pyplot as plt
 import pyscreenshot as ImageGrab
-import time, datetime, sys, os, argparse, gc, copy
+import time, datetime, sys, os, argparse, copy, shutil
 
 import Optimizer, Interface, Population
 
 
 def main(args):
+    start_num = '6-25_run1'
+    folder = '../run_'+str(start_num)
+    os.makedirs(folder,exist_ok=True)
+    shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
+    shutil.copystat('./take_zernike_data.py',folder+'/mainscript.py')
+    
     interface = Interface.Interface(args)
+
+
+    args.num_initial_metrics = 500
+    args.num_masks = 15
+    args.num_childs = 15
+    args.fitness_func = 'max'
     args0 = copy.copy(args)
     
-    start_num = '6-20_run1'
+    
     coeffs = [50,100,150,200]
     modes = np.arange(13)+3
 
@@ -21,42 +33,41 @@ def main(args):
 
 ##    modes = [3]
     
+    
     for mode in modes:
+        args = copy.copy(args0)
+        args.save_path = 'take_test_data/test_run_'+str(start_num)+'/mode_'+str(mode)+'_zopt'
+
+        zopt = Optimizer.Optimizer(args,interface)
+        zopt.run_zernike(modes,[-240,240])
+        zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
         for coeff in coeffs:
             for segment in segments:
                 for measure in [True]:
-                    gc.collect()
                     clist = np.zeros(13)
                     clist[mode-3]=coeff
                     args = copy.copy(args0)
                     args.zernike_coeffs = clist.tolist()
 
     ##                args.grating_step = 16
-                    args.slm_width = 1024
-                    args.slm_height = 768
+                    
     ##                args.segment_width = 64
     ##                args.segment_height = 48
                     args.segment_width = segment[0]
                     args.segment_height = segment[1]
                     args.gens = 1000
-                    args.num_initial_metrics = 500
-                    args.num_masks = 30
-                    args.fitness_func = 'max'
+                    if segment[0]==32:
+                        args.gens=1500
                     args.measure_all = measure
+
                     
                     segment_save = '/'+str(args.segment_height)+'_'+str(args.segment_width)
-                    args.save_path = '../run_'+str(start_num)+'/mode_'+str(mode)+'_coeff_'+str(coeff) + segment_save + '_measure_'+str(measure)
-
-                    gopt = Optimizer.Optimizer(args,interface)
+                    args.save_path = folder+'/mode_'+str(mode)+'_coeff_'+str(coeff) + segment_save + '_measure_'+str(measure)
+                    
+                    gopt = Optimizer.Optimizer(args,interface,base_mask=zopt_mask)
                     gopt.run_genetic()
-                    gopt=0
                     print('\n\nDONE with genetic optimization............\n\n')
-                    gc.collect()
 
-            args.save_path = '../run_'+str(start_num)+'/mode_'+str(mode)+'_coeff_'+str(coeff)    
-            zopt = Optimizer.Optimizer(args,interface)
-            zopt.run_zernike(modes,[-240,240])
-            zopt=0
             print('\n\nDONE with zernike optimization............\n\n') 
 
             
@@ -137,6 +148,12 @@ if __name__ == '__main__':
         help='Initial population of randomly generated phase masks in genetic algorithm. DEFAULT=30'
     )
     parser.add_argument(
+        '--num_childs',
+        type=int,
+        default=15,
+        help='Number of offspring masks to generate each generation. DEFAULT=15'
+    )
+    parser.add_argument(
         '--gens',
         type=int,
         default=1000,
@@ -181,7 +198,7 @@ if __name__ == '__main__':
     
     parser.add_argument(
         '--zernike_coeffs', nargs='*', type=int,
-        default=0,
+        default=[0],
         help='List of zernike coefficients for zernike modes 3-15. DEFAULT="0"'
     )
     parser.add_argument(
@@ -191,7 +208,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--num_initial_metrics', type=int,
-        default=100,
+        default=500,
         help='Number of uniform mask measurements to average over for initial metric values. DEFAULT="100"'
     )
 
