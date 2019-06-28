@@ -227,9 +227,9 @@ class Population:
         pidx = np.random.choice(len(self.masks),size=2,replace=False,p=self.parent_probability_dist)
         parents = [np.array(self.masks[pidx[0]],dtype=np.uint8),np.array(self.masks[pidx[1]],dtype=np.uint8)]
         if self.uniform_childs:
-			uprob = 0.1
-			umask = self.create_mask(True)
-			parents = [np.random.choice([parent,umask],p=[uprob,1-uprob]) for parent in parents]
+            uprob = 0.1
+            if np.random.choice([True,False],p=[uprob,1-uprob]):
+                parents[0]=self.create_mask(True)
         shape = parents[0].shape
         rand_matrix = np.random.choice([True,False],size=shape).reshape(shape)
         child = parents[0]*rand_matrix+parents[1]*np.invert(rand_matrix)
