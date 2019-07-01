@@ -116,15 +116,20 @@ class Optimizer:
             self.update_metrics()
 
         self.child_masks = self.parent_masks.make_children(self.uniform_childs)
+        t0 = time.time()
         self.interface.get_output_fields(self.child_masks)
-                
+        tt = time.time()-t0
+        
         if self.measure_all:
             self.child_masks.ranksort()
+            t0 = time.time()
             self.interface.get_output_fields(self.parent_masks)
+            tt += time.time()-t0
             self.parent_masks.ranksort()
         else:
             self.child_masks.ranksort(scale=self.uniform_scale)
-        
+
+        print('SLMtime', round(tt,2),'s', end=' ...\t')
         self.parent_masks.replace_parents(self.child_masks)
         self.update_metrics()
         self.gen+=1
@@ -141,12 +146,12 @@ class Optimizer:
         self.reset_time()
         while self.gen <= numgens:
             t0 = time.time()
-            print('generation',self.gen,end=' ....\t')
+            print('generation',self.gen,end=' ...\t')
             self.parent_masks.update_num_mutations(self.gen,numgens)
             self.run_generation()
             if self.gen % int(numgens/4)==0:
                 self.save_checkpoint()
-            print('Time', round(time.time()-t0,2),'s', end=' ....\t')
+            print('Time', round(time.time()-t0,2),'s', end=' ...\t')
             print('Fitness:', round(max(self.parent_masks.get_fitness_vals()),2))
 
         self.get_final_metrics()
