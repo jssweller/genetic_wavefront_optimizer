@@ -3,7 +3,7 @@ import win32pipe as wp
 import win32file as wf
 import matplotlib.pyplot as plt
 import pyscreenshot as ImageGrab
-import time, datetime, sys, os, argparse, copy
+import time, datetime, sys, os, argparse, copy, math
 
 class Population:
     def __init__(self, args, base_mask=0, uniform=False):
@@ -244,8 +244,28 @@ class Population:
         """
         if func is None:
             func = self.fitness_func
+        if func == 'localmax':
+            output_field = np.asarray(output_field)
+            dim = int(np.sqrt(output_field.shape[0]))
+            output_field = output_field.reshape(dim,dim)
+            d=2
+            midx = np.argmax(output_field[d:dim-d,d:dim-d])
+            midx = np.array([midx%(dim-2*d),math.floor(midx/(dim-2*d))]) + d
+           
+            row = (midx[0]-d,midx[0]+d+1)
+            col = (midx[1]-d,midx[1]+d+1)
+            cen = output_field[max(row[0],0):min(row[1],dim),max(col[0],0):min(col[1],dim)]
+
+            wroi = np.zeros(cen.shape) + .1/16
+            wroi[1:-1,1:-1] = 0.2/9
+            wroi[d,d] = 0.7
+
+            wcen = np.multiply(wroi,cen)
+            return np.sum(np.multiply(wroi,cen))
+            
         if func == 'max':
-            output_field = np.asarray(output_field[0::3])
+            output_field = np.asarray(output_field)
+            midxs = np.argsort(output_field)
             output_field = output_field[np.argsort(output_field)]
     ##        weights = np.square(np.arange(1,10,1))
     ##        weights = weights/np.mean(weights)
