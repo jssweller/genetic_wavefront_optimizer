@@ -9,7 +9,7 @@ import Optimizer, Interface, Population
 
 
 def main(args):
-    start_num = '6-27_run1'
+    start_num = '6-27_run2'
     folder = '../run_'+str(start_num)
     os.makedirs(folder,exist_ok=True)
     shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
@@ -19,7 +19,7 @@ def main(args):
 
 
     args.num_initial_metrics = 500
-    args.num_masks = 15
+    args.num_masks = 20
     args.num_childs = 15
     args.fitness_func = 'max'
     args0 = copy.copy(args)
