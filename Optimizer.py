@@ -189,6 +189,12 @@ class Optimizer:
             # Fine Search
             coeffs = np.arange(best_coeff-snum,best_coeff+snum,2)
             best_coeff = self.get_best_coefficient(zmode,coeffs)
+
+            # Repeat Fine
+            for i in range(4):
+                coeffs = np.arange(best_coeff-int(snum/2),best_coeff+int(snum/2),2)
+                best_coeff = int(np.mean([self.get_best_coefficient(zmode,coeffs),best_coeff]))
+            
             
             base_mask += self.parent_masks.create_zernike_mask(self.get_coeff_list(zmode,best_coeff))
             self.parent_masks.update_base_mask(base_mask)
