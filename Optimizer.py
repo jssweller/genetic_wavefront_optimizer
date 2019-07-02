@@ -168,7 +168,7 @@ class Optimizer:
         args0 = copy.copy(self.args)
         args0.num_masks=1
 ##        args0.zernike_coeffs=[0]
-        args0.fitness_func = 'max'
+        args0.fitness_func = 'spot'
 ##        self.save_path=self.save_path+'/zernike'
         initial_base_mask = copy.copy(self.base_mask)
         base_mask = copy.copy(self.base_mask)
