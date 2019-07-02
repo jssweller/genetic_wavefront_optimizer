@@ -34,25 +34,43 @@ class Interface:
     
     def encode_mask(self,mask):
         """Return buffer size and mask as bytearray."""
-        return bytearray(len(mask).to_bytes(self.num_bytes_buffer, byteorder='little', signed=False)) + bytearray(mask)
+        mask = self.flatten_mask(mask).astype(np.uint8).tobytes()
+        return len(mask).to_bytes(self.num_bytes_buffer, byteorder='little', signed=False) + mask
     
     def get_output_fields(self,population,repeat=1):
         """Transmit mask pixel data through pipe to apparatus. Return list of output field ROIs."""      
+##        t0=time.time()
         input_masks = population.get_slm_masks()
-        t0=time.time()
+##        print('\n\nget masks:',np.shape(input_masks),np.round(time.time()-t0,10))
+##        t0=time.time()
         
         roi_list = []
 ##        print(np.shape(input_masks))
 ##        print('sending...',end='')
+##        write_times = []
+##        encode_time = []
+##        read_times = []
         for i,mask in enumerate(input_masks):
-            mask = self.flatten_mask(mask).astype(np.uint8)
+##            t1=time.time()
             mask = self.encode_mask(mask)
-            for j in range(repeat):                    
+##            encode_time.append(time.time()-t1)
+            for j in range(repeat):
+##                t1 = time.time()
                 wf.WriteFile(self.pipe_handle_out, mask)
+##                write_times.append(time.time()-t1)
+##                t1 = time.time()
                 read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
+##                print(read_pipe)
+##                read_times.append(time.time()-t1)
                 read_array = list(read_pipe[1])
                 roi_list.append(read_array[0::3])
-##        print('.... Interface Time (seconds):', time.time()-t0, end='')
+                
+                
+        
+##        print('.... Interface Time (seconds):', time.time()-t0)
+##        print('write_time', np.sum(write_times))
+##        print('read_time', np.sum(read_times))
+##        print('encode_time', np.sum(encode_time))
         population.update_output_fields(roi_list)
         
     
