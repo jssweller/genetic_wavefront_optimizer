@@ -103,10 +103,10 @@ class Population:
         return newmask
     
     def create_full_mask(self,mask):
-        segment = np.ones((self.segment_height, self.segment_width),dtype=np.uint8)
         if np.shape(mask)[0] == self.slm_height:
             return mask
         else:
+            segment = np.ones((self.segment_height, self.segment_width),dtype=np.uint8)
             return np.kron(mask,segment)
             
 ############################################### Begin Zernike ########################################
