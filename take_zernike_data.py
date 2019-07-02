@@ -9,7 +9,7 @@ import Optimizer, Interface, Population
 
 
 def main(args):
-    start_num = '6-27_run2'
+    start_num = '7-2_run1_newinterface'
     folder = '../run_'+str(start_num)
     os.makedirs(folder,exist_ok=True)
     shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
@@ -19,7 +19,7 @@ def main(args):
 
 
     args.num_initial_metrics = 500
-    args.num_masks = 20
+    args.num_masks = 15
     args.num_childs = 15
     args.fitness_func = 'max'
     args0 = copy.copy(args)
@@ -32,16 +32,16 @@ def main(args):
     segments = [[64,96],[32,48]]
 
 ##    modes = [3]
-    
-    
-    for mode in modes:
-        args = copy.copy(args0)
-        args.save_path = folder+'/mode_'+str(mode)+'_zopt'
 
-        zopt = Optimizer.Optimizer(args,interface)
-        zopt.run_zernike(modes,[-240,240])
-        zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
-        for coeff in coeffs:
+    args = copy.copy(args0)
+    args.save_path = folder+'/zopt'
+
+    zopt = Optimizer.Optimizer(args,interface)
+    zopt.run_zernike(modes,[-240,240])
+    zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
+    
+    for coeff in coeffs:
+        for mode in modes:
             for segment in segments:
                 for measure in [True]:
                     clist = np.zeros(13)
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--add_uniform_childs',
         type=bool,
-        default=True,
+        default=False,
         help='Turn on/off visualization of optimization. DEFAULT=False'
     )
     parser.add_argument(
