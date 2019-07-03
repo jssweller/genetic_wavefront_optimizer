@@ -162,7 +162,7 @@ class Optimizer:
     def run_zernike(self, zmodes, coeff_range):
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
         print('Zernike optimizer running...')
-        best_zmodes = np.zeros(13)
+        best_zmodes = np.zeros(26)
         self.args.zernike_coeffs = [0]
         self.init_metrics()
         args0 = copy.copy(self.args)
@@ -177,7 +177,7 @@ class Optimizer:
         self.initial_zernike_log(zmodes,coeff_range)
         
         for zmode in zmodes:
-            if zmode<3 or zmode>15:
+            if zmode<3 or zmode>26:
                 print('Warning: Zernike mode number out of range (ignored).')
                 continue
             print('\nOptimizing Zernike Mode',str(zmode))
@@ -214,7 +214,7 @@ class Optimizer:
         self.save_path = args0.save_path
         
     def get_coeff_list(self,zmode,coeff):
-        cfs = np.zeros(13)
+        cfs = np.zeros(26)
         cfs[zmode-3] = coeff
         return cfs
     
