@@ -35,13 +35,20 @@ def main(args):
 
     args = copy.copy(args0)
     args.save_path = folder+'/zopt'
-
     zopt = Optimizer.Optimizer(args,interface)
-    zopt.run_zernike(modes,[-240,240])
-    zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
+    if os.path.isdir(args.save_path):
+        opt_zmodes = np.loadtxt(args.save_path+'/optimized_zmodes.txt')
+        print(opt_zmodes)
+        zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
+        print(zopt_mask.shape)
+    else:
+        zopt.run_zernike(modes,[-240,240])
+        zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
     
     for coeff in coeffs:
         for mode in modes:
+            if coeff==50 and mode<8:
+                continue
             for segment in segments:
                 for measure in [True]:
                     clist = np.zeros(13)
