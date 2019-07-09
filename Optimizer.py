@@ -107,11 +107,8 @@ class Optimizer:
     def run_generation(self):
         if self.gen==1:
             self.interface.get_output_fields(self.parent_masks)
-            if self.measure_all:
-                self.parent_masks.ranksort()
-            else:
-                self.uniform_scale = np.mean([self.parent_masks.get_output_fields()[:2],self.parent_masks.get_output_fields()[-2:]])
-                self.parent_masks.ranksort()                
+            self.uniform_scale = np.mean([self.parent_masks.get_output_fields()[:2],self.parent_masks.get_output_fields()[-2:]])
+            self.parent_masks.ranksort()                
             self.update_metrics()
 
         self.child_masks = self.parent_masks.make_children(self.uniform_childs)
@@ -126,6 +123,9 @@ class Optimizer:
             tt += time.time()-t0
             self.parent_masks.ranksort()
         else:
+            if self.gen > int(self.numgens * 0.9):
+                self.interface.get_output_fields(self.parent_masks)
+                self.parent_masks.ranksort(scale=self.uniform_scale)
             self.child_masks.ranksort(scale=self.uniform_scale)
 
         print('SLMtime', round(tt,2),'s', end=' ...\t')
