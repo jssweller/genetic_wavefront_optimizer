@@ -190,7 +190,7 @@ class Optimizer:
             best_coeff = self.get_best_coefficient(zmode,coeffs)
 
             # Repeat Fine
-            for i in range(4):
+            for i in range(6):
                 coeffs = np.arange(best_coeff-int(snum/2),best_coeff+int(snum/2),2)
                 best_coeff = int(np.mean([self.get_best_coefficient(zmode,coeffs),best_coeff]))
             
