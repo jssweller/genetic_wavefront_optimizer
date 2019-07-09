@@ -60,9 +60,9 @@ class Population:
         self.masks.append(mask)
     
     def get_replace_idx(self, fitness):
-        for i, val in enumerate(self.fitness_vals):
+        for j, val in enumerate(self.fitness_vals):
             if val<fitness:
-                return i
+                return j
         return None
     
     def replace_parents(self,children):
@@ -353,19 +353,22 @@ class Zernike:
         return  6 *((x-self.x0)*self.scale)**2 - 6 *((y-self.y0)*self.scale)**2 - 20 *((x-self.x0)*self.scale)**2 *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2) + 20 *((y-self.y0)*self.scale)**2 *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2) + 15 *((x-self.x0)*self.scale)**2 *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**2 - 15 *((y-self.y0)*self.scale)**2 *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**2
 
     def z21(self,y,x):
-        return  12 *((x-self.x0)*self.scale) *((y-self.y0)*self.scale) - 40 *((x-self.x0)*self.scale) *((y-self.y0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2) + 30 *((x-self.x0)*self.scale) *((y-self.y0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**2
+        return  12 *((x-self.x0)*self.scale) *((y-self.y0)*self.scale) - 40 *((x-self.x0)*self.scale) *((y-self.y0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2) + 30 *((x-self.x0)*self.scale) *((y-self.y0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**2
+
 
     def z22(self,y,x):
         return -4 *((x-self.x0)*self.scale) + 30 *((x-self.x0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2) - 60 *((x-self.x0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**2 + 35 *((x-self.x0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**3
 
     def z23(self,y,x):
-        return -4 *((y-self.y0)*self.scale) + 30 *((y-self.y0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2) - 60 *((y-self.y0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**2 + 35 *((y-self.y0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**3
+        return -4 *((y-self.y0)*self.scale) + 30 *((y-self.y0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2) - 60 *((y-self.y0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**2 + 35 *((y-self.y0)*self.scale) *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**3
+
 
     def z24(self,y,x):
         return 1 - 20 *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2) + 90 *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**2 - 140* (((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**3 + 70 *(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)**4
 
     def z25(self,y,x):
-        return  ((x-self.x0)*self.scale)**5 - 10 *((x-self.x0)*self.scale)**3 *((y-self.y0)*self.scale)**2 + 5*((x-self.x0)*self.scale)*((y-self.y0)*self.scale)**4
+        return  ((x-self.x0)*self.scale)**5 - 10 *((x-self.x0)*self.scale)**3 *((y-self.y0)*self.scale)**2 + 5*((x-self.x0)*self.scale)*((y-self.y0)*self.scale)**4
+
 
     def z26(self,y,x):
         return 5 *((x-self.x0)*self.scale)**4 *((y-self.y0)*self.scale) - 10 *((x-self.x0)*self.scale)**2 *((y-self.y0)*self.scale)**3 + ((y-self.y0)*self.scale)**5

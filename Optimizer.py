@@ -107,7 +107,6 @@ class Optimizer:
     def run_generation(self):
         if self.gen==1:
             self.interface.get_output_fields(self.parent_masks)
-            
             if self.measure_all:
                 self.parent_masks.ranksort()
             else:
