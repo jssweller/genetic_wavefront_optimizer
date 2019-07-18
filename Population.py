@@ -145,7 +145,9 @@ class Population:
                 #print('mode '+str(i),coefficient)
                 num = i+3
                 func = getattr(self.zernike,'z'+str(num))
-                newmask += (int(coefficient)*np.fromfunction(func,(self.slm_height, self.slm_width))).astype(np.uint8)
+                zmask = np.fromfunction(func,(self.slm_height, self.slm_width))
+                zmask *= 4*coefficient/np.max(np.abs(zmask))
+                newmask += zmask.astype(np.uint8)
         return np.array(newmask,dtype=np.uint8)
 
 ####################################### End Zernike #######################################################################
@@ -296,7 +298,6 @@ class Zernike:
         self.x0 = int(population.segment_cols*population.segment_width/2)
         self.y0 = int(population.segment_rows*population.segment_height/2)
         self.scale = 1/self.y0
-##        self.scale = 1000**2/(2*self.x0)*2.5*10**-6
 
     def z3(self,y,x):
         return -1 + 2*(((x-self.x0)*self.scale)**2+((y-self.y0)*self.scale)**2)
