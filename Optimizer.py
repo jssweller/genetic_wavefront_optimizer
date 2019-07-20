@@ -123,9 +123,9 @@ class Optimizer:
             tt += time.time()-t0
             self.parent_masks.ranksort()
         else:
-            if self.gen > int(self.numgens * 0.9):
-                self.interface.get_output_fields(self.parent_masks)
-                self.parent_masks.ranksort(scale=self.uniform_scale)
+##            if self.gen > int(self.numgens * 0.9):
+##                self.interface.get_output_fields(self.parent_masks)
+##                self.parent_masks.ranksort(scale=self.uniform_scale)
             self.child_masks.ranksort(scale=self.uniform_scale)
 
         print('SLMtime', round(tt,2),'s', end=' ...\t')
@@ -167,7 +167,7 @@ class Optimizer:
         args0 = copy.copy(self.args)
         args0.num_masks=1
 ##        args0.zernike_coeffs=[0]
-        args0.fitness_func = 'spot'
+        args0.fitness_func = 'max'
 ##        self.save_path=self.save_path+'/zernike'
         initial_base_mask = copy.copy(self.base_mask)
         base_mask = copy.copy(self.base_mask)
@@ -181,7 +181,7 @@ class Optimizer:
                 continue
             print('\nOptimizing Zernike Mode',str(zmode))
             # Course search
-            snum = 20
+            snum = 10
             coeffs = np.arange(coeff_range[0],coeff_range[1]+1,snum)
             best_coeff = self.get_best_coefficient(zmode,coeffs)
             
@@ -189,10 +189,10 @@ class Optimizer:
             coeffs = np.arange(best_coeff-snum,best_coeff+snum,2)
             best_coeff = self.get_best_coefficient(zmode,coeffs)
 
-            # Repeat Fine
-            for i in range(6):
-                coeffs = np.arange(best_coeff-int(snum/2),best_coeff+int(snum/2),2)
-                best_coeff = int(np.mean([self.get_best_coefficient(zmode,coeffs),best_coeff]))
+##            # Repeat Fine
+##            for i in range(1):
+##                coeffs = np.arange(best_coeff-int(snum/2),best_coeff+int(snum/2),2)
+##                best_coeff = int(np.mean([self.get_best_coefficient(zmode,coeffs),best_coeff]))
             
             
             base_mask += self.parent_masks.create_zernike_mask(self.get_coeff_list(zmode,best_coeff))
@@ -217,7 +217,7 @@ class Optimizer:
         cfs[zmode-3] = coeff
         return cfs
     
-    def get_best_coefficient(self,zmode,coeffs):
+    def get_best_coefficient(self,zmode,coeffs,repeat=30):
 
         maxmets=[]
         print('coeff',end='')
@@ -229,8 +229,8 @@ class Optimizer:
 ##            else:
 ##                self.parent_masks.change_parent_zcoeff(coeff)
             self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
-            self.interface.get_output_fields(self.parent_masks)
-            self.update_metrics(save_mask=False)
+            self.interface.get_output_fields(self.parent_masks,repeat)
+            self.update_metrics(update_type='initial',save_mask=False)
             maxmets.append(self.metrics['maxmet'][-1])        
         print('\n')
         best_coeff = np.argmax(maxmets)
