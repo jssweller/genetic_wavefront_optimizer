@@ -9,7 +9,7 @@ import Optimizer, Interface, Population
 
 
 def main(args):
-    start_num = '7-2_run1_newinterface'
+    start_num = '8-1_run1'
     folder = '../run_'+str(start_num)
     os.makedirs(folder,exist_ok=True)
     shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
@@ -17,19 +17,23 @@ def main(args):
     
     interface = Interface.Interface(args)
 
-
+    args.mutate_initial_rate = 0.05
+    args.mutate_final_rate = 0.001
+    args.mutate_decay_factor = 450
+    
     args.num_initial_metrics = 500
-    args.num_masks = 15
+    args.num_masks = 20
     args.num_childs = 15
     args.fitness_func = 'max'
     args0 = copy.copy(args)
     
     
-    coeffs = [50,100,150,200]
-    modes = np.arange(13)+3
+    coeffs = [0,50,100,150,200]
+    modes = np.arange(3,15)
 
 ##    segments = [[64,96],[64,48],[32,48],[32,24]]
-    segments = [[64,96],[32,48]]
+##    segments = [[64,96],[32,48]]
+    segments = [[64,96]]
 
 ##    modes = [3]
 
@@ -42,14 +46,15 @@ def main(args):
         zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
         print(zopt_mask.shape)
     else:
-        zopt.run_zernike(modes,[-240,240])
+        zopt.run_zernike(modes,[-60,60])
         zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
     
-    for coeff in coeffs:
-        for mode in modes:
-            if coeff==50 and mode<8:
-                continue
-            for segment in segments:
+        
+    for segment in segments:
+        for coeff in coeffs:
+            for mode in modes:
+##            if coeff==50 and mode<8:
+##                continue
                 for measure in [True]:
                     clist = np.zeros(13)
                     clist[mode-3]=coeff
@@ -62,10 +67,11 @@ def main(args):
     ##                args.segment_height = 48
                     args.segment_width = segment[0]
                     args.segment_height = segment[1]
-                    args.gens = 1000
+                    args.gens = 1500
                     if segment[0]==32:
-                        args.gens=1500
+                        args.gens=2000
                     args.measure_all = measure
+                    args.add_uniform_childs = not measure
 
                     
                     segment_save = '/'+str(args.segment_height)+'_'+str(args.segment_width)
@@ -169,7 +175,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--mutate_initial_rate',
         type=float,
-        default=.01,
+        default=.02,
         help='Initial mutation rate for genetic algorithm. DEFAULT=0.1'
     )
     parser.add_argument(
