@@ -98,7 +98,7 @@ class Population:
             uniform_bool = self.uniform
         newmask = np.zeros((self.segment_rows, self.segment_cols),dtype=np.uint8)
         if uniform_bool == False:
-            for i in range(int(self.segment_rows*self.segment_cols*.1)):
+            for i in range(int(self.segment_rows*self.segment_cols*self.mutate_initial_rate)):
                 newmask[np.random.randint(0, self.segment_rows), np.random.randint(0,self.segment_cols)] = np.random.choice(self.phase_vals)
         return newmask
     
@@ -222,7 +222,7 @@ class Population:
         self.num_mutations = int(round(num_segments * ((self.mutate_initial_rate - self.mutate_final_rate)
                                                     * np.exp(-gen / self.mutate_decay_factor)
                                                     + self.mutate_final_rate)))
-        self.num_mutations = max(2,self.num_mutations)
+        self.num_mutations = max(1,self.num_mutations)
         
     def breed(self):
         """Breed two "parent" masks and return new mutated "child" input mask array."""
