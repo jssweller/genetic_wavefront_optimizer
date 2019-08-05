@@ -98,7 +98,7 @@ class Population:
             uniform_bool = self.uniform
         newmask = np.zeros((self.segment_rows, self.segment_cols),dtype=np.uint8)
         if uniform_bool == False:
-            for i in range(int(self.segment_rows*self.segment_cols*.1)):
+            for i in range(int(self.segment_rows*self.segment_cols*self.mutate_initial_rate)):
                 newmask[np.random.randint(0, self.segment_rows), np.random.randint(0,self.segment_cols)] = np.random.choice(self.phase_vals)
         return newmask
     
@@ -145,7 +145,9 @@ class Population:
                 #print('mode '+str(i),coefficient)
                 num = i+3
                 func = getattr(self.zernike,'z'+str(num))
-                newmask += (int(coefficient)*np.fromfunction(func,(self.slm_height, self.slm_width))).astype(np.uint8)
+                zmask = np.fromfunction(func,(self.slm_height, self.slm_width))
+                zmask *= 4*coefficient/np.max(np.abs(zmask))
+                newmask += zmask.astype(np.uint8)
         return np.array(newmask,dtype=np.uint8)
 
 ####################################### End Zernike #######################################################################
@@ -220,7 +222,7 @@ class Population:
         self.num_mutations = int(round(num_segments * ((self.mutate_initial_rate - self.mutate_final_rate)
                                                     * np.exp(-gen / self.mutate_decay_factor)
                                                     + self.mutate_final_rate)))
-        self.num_mutations = max(2,self.num_mutations)
+        self.num_mutations = max(1,self.num_mutations)
         
     def breed(self):
         """Breed two "parent" masks and return new mutated "child" input mask array."""
@@ -296,7 +298,6 @@ class Zernike:
         self.x0 = int(population.segment_cols*population.segment_width/2)
         self.y0 = int(population.segment_rows*population.segment_height/2)
         self.scale = 1/self.y0
-##        self.scale = 1000**2/(2*self.x0)*2.5*10**-6
 
     def z3(self,y,x):
         return -1 + 2*(((x-self.x0)*self.scale)**2+((y-self.y0)*self.scale)**2)
