@@ -39,7 +39,7 @@ class Interface:
     
     def get_output_fields(self,population,repeat=1):
         """Transmit mask pixel data through pipe to apparatus. Return list of output field ROIs."""      
-##        t0=time.time()
+        t0=time.time()
         input_masks = population.get_slm_masks()
 ##        print('\n\nget masks:',np.shape(input_masks),np.round(time.time()-t0,10))
 ##        t0=time.time()
@@ -55,6 +55,8 @@ class Interface:
             mask = self.encode_mask(mask)
 ##            encode_time.append(time.time()-t1)
             for j in range(repeat):
+                if (j+1)%50 == 0:
+                    print(j, '.....\t',time.time()-t0)
 ##                t1 = time.time()
                 wf.WriteFile(self.pipe_handle_out, mask)
 ##                write_times.append(time.time()-t1)
@@ -63,7 +65,6 @@ class Interface:
 ##                read_times.append(time.time()-t1)
                 read_array = list(read_pipe[1])
                 roi_list.append(read_array[0::3])
-                
         # If using new labview code run this block
         mask = self.encode_mask(input_masks[-1])
         wf.WriteFile(self.pipe_handle_out, mask)
