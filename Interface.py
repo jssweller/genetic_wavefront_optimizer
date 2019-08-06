@@ -64,14 +64,16 @@ class Interface:
                 read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
 ##                read_times.append(time.time()-t1)
                 read_array = list(read_pipe[1])
-                roi_list.append(read_array[0::3])
+                roi_list.append(read_array)
+##                roi_list.append(read_array[0::3])
+                
         # If using new labview code run this block
-        mask = self.encode_mask(input_masks[-1])
-        wf.WriteFile(self.pipe_handle_out, mask)
-        read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
-        read_array = list(read_pipe[1])
-        roi_list.append(read_array[0::3])
-        population.update_output_fields(roi_list[1:])
+##        mask = self.encode_mask(input_masks[-1])
+##        wf.WriteFile(self.pipe_handle_out, mask)
+##        read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
+##        read_array = list(read_pipe[1])
+##        roi_list.append(read_array[0::3])
+##        population.update_output_fields(roi_list[1:])
                     
 ##        print('.... Interface Time (seconds):', time.time()-t0)
 ##        print('write_time', np.sum(write_times))
@@ -79,6 +81,6 @@ class Interface:
 ##        print('encode_time', np.sum(encode_time))
         
 
-##        population.update_output_fields(roi_list)
+        population.update_output_fields(roi_list)
         
     

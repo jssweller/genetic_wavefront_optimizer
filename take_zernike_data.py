@@ -9,23 +9,32 @@ import Optimizer, Interface, Population
 
 
 def main(args):
-    start_num = '7-2_run1_newinterface'
-    folder = '../run_'+str(start_num)
+    start_num = '8-6_trapping_runzernike2'
+    run_description = 'Testing zernike optimization on tweezers setup. Laser\
+spot only, no trap.'
+
+    
+    folder = '../Zernike_Genetic_Data/run_'+str(start_num)
     os.makedirs(folder,exist_ok=True)
     shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
     shutil.copystat('./take_zernike_data.py',folder+'/mainscript.py')
+
+    file = open(folder+'/log.txt','w+')
+    print(run_description)
+    file.write('Description: '+run_description+'\n\n')
+    file.close()
     
     interface = Interface.Interface(args)
 
 
-    args.num_initial_metrics = 500
-    args.num_masks = 15
+    args.num_initial_metrics = 50
+    args.num_masks = 20
     args.num_childs = 15
     args.fitness_func = 'max'
     args0 = copy.copy(args)
     
     
-    coeffs = [50,100,150,200]
+    coeffs = [0]
     modes = np.arange(13)+3
 
 ##    segments = [[64,96],[64,48],[32,48],[32,24]]
@@ -42,17 +51,16 @@ def main(args):
         zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
         print(zopt_mask.shape)
     else:
-        zopt.run_zernike(modes,[-240,240])
+        zopt.run_zernike(modes,[-200,200])
         zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
+##    zopt_mask = 0
     
     for coeff in coeffs:
         for mode in modes:
-            if coeff==50 and mode<8:
-                continue
             for segment in segments:
                 for measure in [True]:
                     clist = np.zeros(13)
-                    clist[mode-3]=coeff
+##                    clist[mode-3]=coeff
                     args = copy.copy(args0)
                     args.zernike_coeffs = clist.tolist()
 
@@ -113,7 +121,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--add_uniform_childs',
         type=bool,
-        default=False,
+        default=True,
         help='Turn on/off visualization of optimization. DEFAULT=False'
     )
     parser.add_argument(
