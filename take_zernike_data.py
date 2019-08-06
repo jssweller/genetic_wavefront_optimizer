@@ -5,19 +5,35 @@ import matplotlib.pyplot as plt
 import pyscreenshot as ImageGrab
 import time, datetime, sys, os, argparse, copy, shutil
 
-import Optimizer, Interface, Population
+import Optimizer, Interface, Population, textwrap
 
 
 def main(args):
-    start_num = '8-1_run1'
+    start_num = '8-5_run1'
+    run_description = 'Testing to see if genetic optimizer can improve \
+a zernike optimized mask. Removing \
+polarizers, lowering mutation rate, and increasing \
+number of parents. Trialing 96x64 and 48x32 segments. \
+Measurement noise is still an issue, especially with \
+the initial and final averages. \n\n Having trouble with AC unit turning on during\
+zernike optimization. Attempting to fix this by turning down thermostat, letting\
+room reach equilibrium and then turning thermostat up before starting optimization.\
+Not ideal.'
+
+        
     folder = '../run_'+str(start_num)
     os.makedirs(folder,exist_ok=True)
     shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
     shutil.copystat('./take_zernike_data.py',folder+'/mainscript.py')
+
+    file = open(folder+'/log.txt','w+')
+    print(run_description)
+    file.write('Description: '+run_description+'\n\n')
+    file.close()
     
     interface = Interface.Interface(args)
 
-    args.mutate_initial_rate = 0.05
+    args.mutate_initial_rate = 0.01
     args.mutate_final_rate = 0.001
     args.mutate_decay_factor = 450
     
@@ -33,7 +49,7 @@ def main(args):
 
 ##    segments = [[64,96],[64,48],[32,48],[32,24]]
 ##    segments = [[64,96],[32,48]]
-    segments = [[64,96]]
+    segments = [[64,96],[32,48]]
 
 ##    modes = [3]
 
@@ -50,9 +66,10 @@ def main(args):
         zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
     
         
-    for segment in segments:
-        for coeff in coeffs:
-            for mode in modes:
+    
+    for coeff in coeffs:
+        for mode in modes:
+            for segment in segments:
 ##            if coeff==50 and mode<8:
 ##                continue
                 for measure in [True]:
