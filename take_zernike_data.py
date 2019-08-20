@@ -9,25 +9,25 @@ import Optimizer, Interface, Population, textwrap
 
 
 def main(args):
-    start_num = '8-5_run1'
-    run_description = 'Testing to see if genetic optimizer can improve \
-a zernike optimized mask. Removing \
-polarizers, lowering mutation rate, and increasing \
-number of parents. Trialing 96x64 and 48x32 segments. \
-Measurement noise is still an issue, especially with \
-the initial and final averages. \n\n Having trouble with AC unit turning on during\
-zernike optimization. Attempting to fix this by turning down thermostat, letting\
-room reach equilibrium and then turning thermostat up before starting optimization.\
-Not ideal.'
-
-        
+    start_num = '8-19_baseline_refbeam_noslm'
+    run_description = 'Same as 8-19_baseline_refbeam run but with mirror \
+in place of SLM. \
+\
+\
+Testing baseline over the course of 2 hours, \
+averaging over 500 camera frames at a time. Added reference beam and \
+normalization of output field based on running average of 1 reference \
+beam frames. Also increased exposure time to value -2 to \
+reduce SLM flickering noise. Doing Zernike and genetic optimization over the \
+weekend in a long run. Lights completely out.'
+    
     folder = '../run_'+str(start_num)
     os.makedirs(folder,exist_ok=True)
     shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
     shutil.copystat('./take_zernike_data.py',folder+'/mainscript.py')
 
     file = open(folder+'/log.txt','w+')
-    print(run_description)
+    print('Run Description: ',run_description)
     file.write('Description: '+run_description+'\n\n')
     file.close()
     
@@ -56,7 +56,19 @@ Not ideal.'
     args = copy.copy(args0)
     args.save_path = folder+'/zopt'
     zopt = Optimizer.Optimizer(args,interface)
-    if os.path.isdir(args.save_path):
+
+    baseline_frames = 100
+    num_to_average = 500
+    run_minutes = 18*60
+##    zopt.get_baseline_intensity(baseline_frames)
+    zopt.get_baseline_maxmean(run_minutes, num_to_average)
+    file = open(folder+'/log.txt','a')
+    file.write('baseline time: '+str(zopt.get_time()))
+    file.write('\nbaseline frames: '+str(baseline_frames))
+    file.write('\nbaseline num_to_average: '+str(num_to_average))
+    file.close()
+    
+    if os.path.isfile(args.save_path+'/optimized_zmodes.txt'):
         opt_zmodes = np.loadtxt(args.save_path+'/optimized_zmodes.txt')
         print(opt_zmodes)
         zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
@@ -70,8 +82,8 @@ Not ideal.'
     for coeff in coeffs:
         for mode in modes:
             for segment in segments:
-##            if coeff==50 and mode<8:
-##                continue
+                if mode!=3 and segment[0]==32:
+                    continue
                 for measure in [True]:
                     clist = np.zeros(13)
                     clist[mode-3]=coeff
@@ -84,8 +96,9 @@ Not ideal.'
     ##                args.segment_height = 48
                     args.segment_width = segment[0]
                     args.segment_height = segment[1]
-                    args.gens = 1500
+                    args.gens = 1200
                     if segment[0]==32:
+                        args.mutate_initial_rate = 0.005
                         args.gens=2000
                     args.measure_all = measure
                     args.add_uniform_childs = not measure
