@@ -86,7 +86,9 @@ class Optimizer:
         final_mask = np.array(self.parent_masks.get_masks()[-1])
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         uniform_pop.update_masks([final_mask])
-        self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
+        ## Undo this change after run is over
+##        self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
+        self.interface.get_output_fields(uniform_pop,repeat=500)
         self.update_metrics(uniform_pop, 'final')
         self.get_final_mean_intensity()
         
@@ -102,7 +104,46 @@ class Optimizer:
         file = open(self.save_path+'/log.txt','a')
         file.write('Final Avg Intensity: '+str(np.mean(final_mean_intensity))+'\n')
         file.close()
-    
+
+    def get_baseline_intensity(self, num_frames):
+        print('Recording baseline intensity...\n')
+        self.reset_time()
+        args0 = copy.copy(self.args)
+        args0.zernike_coeffs = [0]
+        args0.num_masks = 1
+        uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
+        self.interface.get_output_fields(uniform_pop,repeat=num_frames)
+        self.update_metrics(uniform_pop, 'initial',save_mask=False)
+        os.makedirs(self.save_path, exist_ok=True)
+        np.savetxt(self.save_path+'/baseline_intensity_roi.txt', uniform_pop.get_output_fields(), fmt='%d')
+        print('.....Done\n\n')
+
+    def get_baseline_maxmean(self, run_minutes, num_to_avg):
+        print('Recording baseline intensity...\n')
+        self.reset_time()
+        args0 = copy.copy(self.args)
+        args0.zernike_coeffs = [0]
+        args0.num_masks = 1
+        uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
+
+        frame = 0
+        times = []
+        end_time = datetime.datetime.now() + datetime.timedelta(0,int(run_minutes*60))
+        while datetime.datetime.now() < end_time:
+            self.interface.get_output_fields(uniform_pop,repeat=num_to_avg)
+            self.update_metrics(uniform_pop, 'initial',save_mask=False)
+            times.append(datetime.datetime.now())
+            frame += num_to_avg
+            print('Time left:', end_time-datetime.datetime.now())
+
+        self.save_path += '/baseline'
+        os.makedirs(self.save_path, exist_ok=True)
+        self.save_checkpoint()
+        np.savetxt(self.save_path+'/baseline_times.txt', np.asarray(times,dtype='datetime64[s]'), fmt='%s')
+        self.save_plots()
+
+        self.save_path = args0.save_path
+        print('.....Done\n\n')
     
     def run_generation(self):
         if self.gen==1:
@@ -211,7 +252,7 @@ class Optimizer:
         self.parent_masks.update_zernike_parent(best_zmodes)
         self.save_plots()
         self.save_path = args0.save_path
-        
+    
     def get_coeff_list(self,zmode,coeff):
         cfs = np.zeros(26)
         cfs[zmode-3] = coeff
@@ -237,7 +278,7 @@ class Optimizer:
         if isinstance(best_coeff,np.ndarray):
             best_coeff = best_coeff[-1]
         return coeffs[best_coeff]
-    
+ 
     def initial_log(self):
         os.makedirs(self.save_path, exist_ok=True)
         file = open(self.save_path+'/log.txt','w+')
