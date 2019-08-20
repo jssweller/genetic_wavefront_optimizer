@@ -269,14 +269,17 @@ class Population:
             output_field = np.asarray(output_field)
             midxs = np.argsort(output_field)
             output_field = output_field[np.argsort(output_field)]
-    ##        weights = np.square(np.arange(1,10,1))
-    ##        weights = weights/np.mean(weights)
-    ##        return np.mean(np.multiply(output_field[-9:],weights))
             return np.mean(
                 np.mean(output_field[-22:-10])*.05
                 + np.mean(output_field[-10:-5])*.1
                 + np.mean(output_field[-5:-1])*.2
                 + output_field[-1]*.65)
+            # Trial max with new weights
+##            return np.mean(
+##                    np.mean(output_field[-22:-10])*.7
+##                    + np.mean(output_field[-10:-5])*.8
+##                    + np.mean(output_field[-5:-1])*.9
+##                    + output_field[-1])            
 
         if func == 'spot':
             if np.sum(output_field)==0:
