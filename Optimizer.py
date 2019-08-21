@@ -298,6 +298,7 @@ class Optimizer:
     def initial_zernike_log(self,zmodes,coeff_range):
         os.makedirs(self.save_path, exist_ok=True)
         file = open(self.save_path+'/log.txt','w+')
+        file.write('Start Time: '+str(datetime.datetime.now()))
         file.write('Main script: '+str(os.path.realpath(__main__.__file__))+'\n\n')
         file.write('Save path: '+os.path.dirname(os.path.realpath(self.save_path+'/log.txt'))+'\n\n')
         file.write('#### Parameters ####:\n\n')
@@ -306,7 +307,7 @@ class Optimizer:
         file.write('Coefficient range: '+str(coeff_range))
         for arg in vars(self.args):
             file.write('\n'+str(arg)+'='+str(getattr(self.args, arg)))
-
+            
         file.write('\n\n#### Metrics ####:\n\n')    
         file.write('Initial metrics time: '+str(self.get_time())+'\n')
         file.write('Initial Avg Intensity: '+str(self.metrics['mean'][0])+'\n')
@@ -318,6 +319,7 @@ class Optimizer:
         file.write('Final Spot Enhancement: '+str(self.metrics['spot'][0]/self.metrics['spot'][-1])+'\n')          
         file.write('Final Intensity Enhancement: '+str(self.metrics['maxint'][-1]/self.metrics['maxint'][0])+'\n\n')
         file.write('Optimization Time: '+str(self.get_time())+'\n')
+        file.write('end time: '+str(datetime.datetime.now()))
         file.close()
         
         
