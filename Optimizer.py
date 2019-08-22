@@ -112,11 +112,10 @@ class Optimizer:
         args0.zernike_coeffs = [0]
         args0.num_masks = 1
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
+
         self.interface.get_output_fields(uniform_pop,repeat=num_frames)
-        self.update_metrics(uniform_pop, 'initial',save_mask=False)
-        os.makedirs(self.save_path, exist_ok=True)
-        np.savetxt(self.save_path+'/baseline_intensity_roi.txt', uniform_pop.get_output_fields(), fmt='%d')
         print('.....Done\n\n')
+        return uniform_pop.get_output_fields
 
     def get_baseline_maxmean(self, run_minutes, num_to_avg):
         print('Recording baseline intensity...\n')
@@ -144,6 +143,22 @@ class Optimizer:
 
         self.save_path = args0.save_path
         print('.....Done\n\n')
+
+    def save_rois_metrics(self, rois, population=None, save_path=None):
+        self.init_metrics()
+        if population is None:
+            population = Population.Population(args0,base_mask=self.base_mask,uniform=True)
+        if save_path != None:
+            self.save_path = save_path
+        for roi in rois:
+            self.metrics['spot'].append(population.fitness(field,'spot'))
+            self.metrics['maxint'].append(np.max(field))
+            self.metrics['maxmet'].append(population.fitness(field,'max'))
+            self.metrics['mean'].append(population.fitness(field,'mean'))
+            self.metrics['roi'].append(field)
+        self.save_checkpoint()
+        save_plots()
+        self.save_path = self.args.save_path
     
     def run_generation(self):
         if self.gen==1:
