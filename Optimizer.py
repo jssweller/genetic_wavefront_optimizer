@@ -282,7 +282,8 @@ class Optimizer:
     def initial_log(self):
         os.makedirs(self.save_path, exist_ok=True)
         file = open(self.save_path+'/log.txt','w+')
-        file.write('Main script: '+str(os.path.realpath(__main__.__file__))+'\n\n')
+        file.write('Start Time: '+str(datetime.datetime.now()))
+        file.write('\n\nMain script: '+str(os.path.realpath(__main__.__file__))+'\n\n')
         file.write('Save path: '+os.path.dirname(os.path.realpath(self.save_path+'/log.txt'))+'\n\n')
         file.write('#### Parameters ####:\n\n')
 
@@ -299,7 +300,7 @@ class Optimizer:
         os.makedirs(self.save_path, exist_ok=True)
         file = open(self.save_path+'/log.txt','w+')
         file.write('Start Time: '+str(datetime.datetime.now()))
-        file.write('Main script: '+str(os.path.realpath(__main__.__file__))+'\n\n')
+        file.write('\n\nMain script: '+str(os.path.realpath(__main__.__file__))+'\n\n')
         file.write('Save path: '+os.path.dirname(os.path.realpath(self.save_path+'/log.txt'))+'\n\n')
         file.write('#### Parameters ####:\n\n')
 
@@ -319,7 +320,7 @@ class Optimizer:
         file.write('Final Spot Enhancement: '+str(self.metrics['spot'][0]/self.metrics['spot'][-1])+'\n')          
         file.write('Final Intensity Enhancement: '+str(self.metrics['maxint'][-1]/self.metrics['maxint'][0])+'\n\n')
         file.write('Optimization Time: '+str(self.get_time())+'\n')
-        file.write('end time: '+str(datetime.datetime.now()))
+        file.write('end time: '+str(datetime.datetime.now())+'\n')
         file.close()
         
         
