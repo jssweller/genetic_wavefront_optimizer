@@ -11,40 +11,38 @@ import Optimizer, Interface, Population, textwrap
 
 def main(args):
     start_num = 'run_mask_comparison1'
-    run_description = 'Same as 8-19_baseline_refbeam run but with mirror \
-in place of SLM.'
-    
-##    folder = '../Compare_Masks/run_'+str(start_num)
-##    os.makedirs(folder,exist_ok=True)
-##    shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
-##    shutil.copystat('./take_zernike_data.py',folder+'/mainscript.py')
-##
-##    file = open(folder+'/log.txt','w+')
-##    print('Run Description: ',run_description)
-##    file.write('Description: '+run_description+'\n\n')
-##    file.close()
-    
-##    interface = Interface.Interface(args)
+    run_description = 'Run comparison of genetic and zernike masks.'
 
-##    args.mutate_initial_rate = 0.01
-##    args.mutate_final_rate = 0.001
-##    args.mutate_decay_factor = 450
-##    
-##    args.num_initial_metrics = 500
-##    args.num_masks = 20
-##    args.num_childs = 15
-##    args.fitness_func = 'max'
-##    args0 = copy.copy(args)
-##    
-##    args = copy.copy(args0)
-##    zopt = Optimizer.Optimizer(args,interface)
-##    baseline_frames = 100
-##    num_to_average = 500
-##    run_minutes = 18*60
+    start_time,end_time = 22,4
+    numframes = 500    
     shape = [768,1024]
     gfile = ''
     zfile = ''
     
+    folder = '../Compare_Masks/run_'+str(start_num)
+    os.makedirs(folder,exist_ok=True)
+    shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
+    shutil.copystat('./take_zernike_data.py',folder+'/mainscript.py')
+
+    file = open(folder+'/log.txt','w+')
+    print('Run Description: ',run_description)
+    file.write('Description: '+run_description+'\n\n')
+    file.close()
+    
+    interface = Interface.Interface(args)
+
+    args.mutate_initial_rate = 0.01
+    args.mutate_final_rate = 0.001
+    args.mutate_decay_factor = 450
+    
+    args.num_initial_metrics = 500
+    args.num_masks = 20
+    args.num_childs = 15
+    args.fitness_func = 'max'
+    args0 = copy.copy(args)
+    
+    zopt = Optimizer.Optimizer(args,interface)
+  
     genetic_mask = np.loadtxt(gfile, dtype=np.uint8).reshape(shape)
     zernike_mask = np.loadtxt(zfile, dtype=np.uint8).reshape(shape)
     masks = [genetic_mask,zernike_mask]
@@ -52,12 +50,10 @@ in place of SLM.'
     labels = ['genetic','zernike']
     rois = [[],[]]
     times = [[],[]]
-    
-    ti,tf = 22,4
 
     t0 = dt.datetime.now()
-    start_time = dt.datetime.combine(t0.date(),dt.time(ti))
-    end_time = dt.datetime.combine((t0+dt.timedelta(1)).date(),dt.time(tf))
+    start_time = dt.datetime.combine(t0.date(),dt.time(start_time))
+    end_time = dt.datetime.combine((t0+dt.timedelta(1)).date(),dt.time(end_time))
 
     print(start_time,end_time,dt.time())
 
@@ -65,8 +61,6 @@ in place of SLM.'
         print('WAITING... Time left before start:', start_time - dt.datetime.now())
         time.sleep(5)
 
-    
-    numframes = 500
     while end_time > dt.datetime.now():
         rnd = np.random.randint(0,2)
         zopt.base_mask = masks[rnd]
