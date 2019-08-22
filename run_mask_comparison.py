@@ -41,20 +41,49 @@ in place of SLM.'
 ##    baseline_frames = 100
 ##    num_to_average = 500
 ##    run_minutes = 18*60
-
-    genetic_mask = 1
-    zernike_mask = 1
-
-    start_time = dt.time(22)
+    shape = [768,1024]
+    gfile = ''
+    zfile = ''
     
-    end_time = dt.time(4)
+    genetic_mask = np.loadtxt(gfile, dtype=np.uint8).reshape(shape)
+    zernike_mask = np.loadtxt(zfile, dtype=np.uint8).reshape(shape)
+    masks = [genetic_mask,zernike_mask]
+    
+    labels = ['genetic','zernike']
+    rois = [[],[]]
+    times = [[],[]]
+    
+    ti,tf = 22,4
+
+    t0 = dt.datetime.now()
+    start_time = dt.datetime.combine(t0.date(),dt.time(ti))
+    end_time = dt.datetime.combine((t0+dt.timedelta(1)).date(),dt.time(tf))
 
     print(start_time,end_time,dt.time())
 
-    while dt.time() < start_time:
+    while start_time > dt.datetime.now():
+        print('WAITING... Time left before start:', start_time - dt.datetime.now())
         time.sleep(5)
+
     
-    while dt.time() > start_time or dt.time() < end_time:
+    numframes = 500
+    while end_time > dt.datetime.now():
+        rnd = np.random.randint(0,2)
+        zopt.base_mask = masks[rnd]
+        times[rnd].append(dt.datetime.now())
+        rois[rnd].append(zopt.get_baseline_intensity(numframes))
+
+    times = np.asarray(times)
+    rois = np.asarray(rois)
+
+    for i,label in enumerate(labels):
+        fdir = folder+'/'+label
+        zopt.save_rois_metrics(rois[i,:], save_path=fdir)
+        np.savetxt(fdir+'/baseline_times.txt', times[i,:], np.asarray(times,dtype='datetime64[s]'), fmt='%s')
+        
+
+        
+        
         
 
     
