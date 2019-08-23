@@ -4,6 +4,7 @@ import win32file as wf
 import matplotlib.pyplot as plt
 import pyscreenshot as ImageGrab
 import time, datetime, sys, os, argparse, copy, __main__
+import datetime as dt
 
 import Interface, Population
 
@@ -206,6 +207,87 @@ class Optimizer:
         self.parent_masks.replace_parents(self.child_masks)
         self.update_metrics()
         self.gen+=1
+
+    def run_compare_masks(self,
+                          start_time,
+                          run_time,
+                          numframes,
+                          folder,
+                          maskfiles,
+                          runid='',
+                          run_description='',
+                          zeromask=False):
+
+        print('1')
+        folder = folder + '/compare_masks'+runid
+        idnum = 0
+        f = folder
+        while os.path.isdir(folder):
+            folder = f+str(idnum+1)
+            idnum+=1
+        os.makedirs(folder,exist_ok=True)
+        file = open(folder+'/log.txt','w+')
+        print('Run Description: ',run_description)
+        file.write('Description: '+run_description+'\n\n')
+        for mfile in maskfiles:
+            if os.path.isfile(mfile):
+                file.write('Mask file:' + mfile + '\n')
+        file.close()
+        print('2')
+
+        masks, labels, rois, times = [],[],[],[]
+        nummasks = 0
+        for mfile in maskfiles:
+            if os.path.isfile(mfile):
+                genetic_mask = np.loadtxt(mfile, dtype=np.uint8).reshape([768,1024])
+                masks.append(genetic_mask)
+                labels.append(mfile.replace('\\','--').replace(':','yy'))
+                rois.append([])
+                times.append([])
+                nummasks+=1
+            else:
+                print('File not found: ',mfile)
+
+        print(labels)
+        if zeromask:
+            zero_mask = 0
+            labels.append('nomask')
+            rois.append([])
+            times.append([])
+            masks.append(zero_mask)
+            nummasks+=1
+        
+        t0 = dt.datetime.now()
+        start_time = dt.datetime.combine(t0.date() + dt.timedelta(days=start_time[2]),dt.time(hour=start_time[0], minute=start_time[1]))
+        if dt.datetime.now() > start_time:
+            start_time = dt.datetime.now()
+        end_time = start_time + dt.timedelta(hours=run_time[0],minutes=run_time[1], seconds=run_time[2])
+
+        while start_time > dt.datetime.now():
+            print('WAITING... Time left before start:', start_time - dt.datetime.now())
+            time.sleep(30)
+
+        i=0
+        while end_time > dt.datetime.now():
+            num = i%nummasks
+            print(labels[num], end='...')
+            self.base_mask = masks[num]
+            times[num].append(dt.datetime.now())
+            rois[num].extend(self.get_baseline_intensity(numframes))
+            i += 1
+            print('Time left:',end_time - dt.datetime.now())
+            
+        for i,label in enumerate(labels):
+            fdir = folder+'/'+label
+            os.makedirs(fdir,exist_ok=True)
+
+            mode = 'w+'
+            if os.path.isfile(folder+'/log.txt'):
+                mode = 'a'
+            file = open(folder+'/log.txt',mode)
+            file.write('\n\n'+label+' averaged: \n')
+            self.save_rois_metrics(rois[i], save_path=fdir, logfile=file)
+            np.savetxt(fdir+'/baseline_times.txt', np.asarray(times[i],dtype='datetime64[s]'), fmt='%s')
     
     def run_genetic(self, numgens=None):
         if numgens is None:
