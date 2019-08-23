@@ -10,95 +10,32 @@ import Optimizer, Interface, Population, textwrap
 
 
 def main(args):
-    runid = '_8-22_short_noref'
+    runid = '_8-22_short_noref3'
     run_description = 'Comparing performance of the zernike mask vs. the zernike + genetic mask. Middle of day run.'
     
     ### PARAMS ####
-    start_time = [12,0] # [hour,minute]
-    run_time = [0,30,0] # [hours,minutes,seconds]
+    start_time = [12,0,0] # [hour,minute,add days]
+    run_time = [0,0,20] # [hours,minutes,seconds]
     numframes = 10
+    zeromask = True
 
-    maskfolder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40'
-    gfile = maskfolder + '/bestmask.txt'
-##    gfile = maskfolder + '/base_mask.txt'
-    zfile = maskfolder + '/base_mask.txt'
-    ######
+    folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40'
+    maskfiles = [r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40\bestmask.txt',
+                 r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40\base_mask.txt',
+        ]
 
-    
-    folder = maskfolder + '/compare_masks'+runid
-    os.makedirs(folder,exist_ok=True)
-    shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
-    shutil.copystat('./take_zernike_data.py',folder+'/mainscript.py')
-
-    file = open(folder+'/log.txt','w+')
-    print('Run Description: ',run_description)
-    file.write('Description: '+run_description+'\n\n')
-    file.write('Genetic mask file:' + gfile + '\n')
-    file.write('Zernike mask file:' + zfile + '\n')
-    file.close()
-    
-    interface = Interface.Interface(args)
-
-    args.mutate_initial_rate = 0.01
-    args.mutate_final_rate = 0.001
-    args.mutate_decay_factor = 450
-    
-    args.num_initial_metrics = 500
-    args.num_masks = 20
-    args.num_childs = 15
-    args.fitness_func = 'max'
-    args0 = copy.copy(args)
-    
+   
+    interface = Interface.Interface(args)    
     zopt = Optimizer.Optimizer(args,interface)
-##    baseline_frames = 100
-##    num_to_average = 500
-##    run_minutes = 18*60
-    shape = [768,1024]
-    
-    genetic_mask = np.loadtxt(gfile, dtype=np.uint8).reshape(shape)
-    zernike_mask = np.loadtxt(zfile, dtype=np.uint8).reshape(shape)
-    masks = [genetic_mask,zernike_mask]
-    
-    labels = ['genetic','zernike']
-    rois = [list([]),list([])]
-    times = [list([]),list([])]
-    
-    t0 = dt.datetime.now()
-    start_time = dt.datetime.combine(t0.date(),dt.time(hour=start_time[0], minute=start_time[1]))
-    if dt.datetime.now() > start_time:
-        start_time = dt.datetime.now()
-    end_time = start_time + dt.timedelta(hours=run_time[0],minutes=run_time[1], seconds=run_time[2])
 
-    print(start_time,end_time,dt.time())
-
-    while start_time > dt.datetime.now():
-        print('WAITING... Time left before start:', start_time - dt.datetime.now())
-        time.sleep(30)
-
-    i=1
-    while end_time > dt.datetime.now():
-        rnd = np.random.randint(0,2)
-        rnd = i%2
-        print(rnd)
-        print(labels[rnd], end='...')
-        zopt.base_mask = masks[rnd]
-        times[rnd].append(dt.datetime.now())
-        rois[rnd].extend(zopt.get_baseline_intensity(numframes))
-
-        i += 1
-        print('Time left:',end_time - dt.datetime.now())
-        
-    for i,label in enumerate(labels):
-        fdir = folder+'/'+label
-        os.makedirs(fdir,exist_ok=True)
-
-        mode = 'w+'
-        if os.path.isfile(folder+'/log.txt'):
-            mode = 'a'
-        file = open(folder+'/log.txt',mode)
-        file.write('\n\n'+label+' averaged: \n')
-        zopt.save_rois_metrics(rois[i], save_path=fdir, logfile=file)
-        np.savetxt(fdir+'/baseline_times.txt', np.asarray(times[i],dtype='datetime64[s]'), fmt='%s')
+    zopt.run_compare_masks(start_time,
+                          run_time,
+                          numframes,
+                          folder,
+                          maskfiles,
+                          runid,
+                          run_description,
+                          zeromask)
         
             
 if __name__ == '__main__':
