@@ -29,7 +29,7 @@ running average over 40 frames. Exposure value at -2.'
     args.mutate_final_rate = 0.001
     args.mutate_decay_factor = 450
     
-    args.num_initial_metrics = 5
+    args.num_initial_metrics = 500
     args.num_masks = 20
     args.num_childs = 15
     args.fitness_func = 'max'
@@ -60,18 +60,25 @@ running average over 40 frames. Exposure value at -2.'
 ##    file.write('\nbaseline num_to_average: '+str(num_to_average))
 ##    file.close()
 
-##    args.save_path = folder+'/zopt'
-##    zopt = Optimizer.Optimizer(args,interface)
-##    if os.path.isfile(args.save_path+'/optimized_zmodes.txt'):
-##        opt_zmodes = np.loadtxt(args.save_path+'/optimized_zmodes.txt')
-##        print(opt_zmodes)
-##        zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
-##        print(zopt_mask.shape)
-##    else:
-##        zopt.run_zernike(modes,[-60,60])
-##        zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
+    ####  WAIT  ####
+##    t0 = datetime.datetime.now()
+##    td = datetime.datetime.combine(t0.date(),datetime.time(22))
+##    while datetime.datetime.now() < td:
+##        print('WAITING... Time left before start:',td - datetime.datetime.now())
+##        time.sleep(60)
     
-    zopt_mask = 0
+    args.save_path = folder+'/zopt'
+    zopt = Optimizer.Optimizer(args,interface)
+    if os.path.isfile(args.save_path+'/optimized_zmodes.txt'):
+        opt_zmodes = np.loadtxt(args.save_path+'/optimized_zmodes.txt')
+        print(opt_zmodes)
+        zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
+        print(zopt_mask.shape)
+    else:
+        zopt.run_zernike(modes,[-60,60])
+        zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
+        
+##    zopt_mask = 0
 
     for coeff in coeffs:
         for mode in modes:
@@ -90,10 +97,10 @@ running average over 40 frames. Exposure value at -2.'
     ##                args.segment_height = 48
                     args.segment_width = segment[0]
                     args.segment_height = segment[1]
-                    args.gens = 1200
+                    args.gens = 1000
                     if segment[0]==32:
                         args.mutate_initial_rate = 0.005
-                        args.gens=2
+                        args.gens=1500
                     args.measure_all = measure
                     args.add_uniform_childs = not measure
 
