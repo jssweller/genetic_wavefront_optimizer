@@ -106,7 +106,7 @@ class Optimizer:
         file.close()
 
     def get_baseline_intensity(self, num_frames):
-        print('Recording baseline intensity...\n')
+        print('Recording baseline intensity...')
         self.reset_time()
         args0 = copy.copy(self.args)
         args0.zernike_coeffs = [0]
@@ -114,8 +114,8 @@ class Optimizer:
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
 
         self.interface.get_output_fields(uniform_pop,repeat=num_frames)
-        print('.....Done\n\n')
-        return uniform_pop.get_output_fields
+        print('.....Done\n')
+        return uniform_pop.get_output_fields()
 
     def get_baseline_maxmean(self, run_minutes, num_to_avg):
         print('Recording baseline intensity...\n')
@@ -144,20 +144,38 @@ class Optimizer:
         self.save_path = args0.save_path
         print('.....Done\n\n')
 
-    def save_rois_metrics(self, rois, population=None, save_path=None):
+    def save_rois_metrics(self, rois, population=None, save_path=None, logfile=None):
         self.init_metrics()
         if population is None:
-            population = Population.Population(args0,base_mask=self.base_mask,uniform=True)
+            population = Population.Population(self.args,base_mask=self.base_mask,uniform=True)
         if save_path != None:
             self.save_path = save_path
-        for roi in rois:
+        for field in rois:
             self.metrics['spot'].append(population.fitness(field,'spot'))
             self.metrics['maxint'].append(np.max(field))
             self.metrics['maxmet'].append(population.fitness(field,'max'))
             self.metrics['mean'].append(population.fitness(field,'mean'))
             self.metrics['roi'].append(field)
         self.save_checkpoint()
-        save_plots()
+        self.save_plots()
+
+        if logfile == None:
+            f = self.save_path+'/averages.txt'
+            file = open(f,'w+')
+        else:
+            file = logfile
+        for key in self.metrics.keys():
+            if key == 'roi':
+                continue
+            d = self.metrics[key]
+            if len(d)>0:
+                m = np.mean(d)
+                if key == 'spot':
+                    m = 1/m
+                file.write('\n'+key+': '+str(m))
+        file.write('\n\n')
+        file.close()
+                       
         self.save_path = self.args.save_path
     
     def run_generation(self):
@@ -170,7 +188,7 @@ class Optimizer:
         self.child_masks = self.parent_masks.make_children(self.uniform_childs)
         t0 = time.time()
         self.interface.get_output_fields(self.child_masks)
-        tt = time.time()-t0
+        tt = time.time() - t0
         
         if self.measure_all:
             self.child_masks.ranksort()
