@@ -14,14 +14,24 @@ file = '/max_intensity_vals_checkpoint.txt'
 masknum = -1
 
 
-all_folders_in_dir = ''
+all_folders_in_dir = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-23'
+
 
 if all_folders_in_dir != '':
-    ## find all directories and put in list.
-    
+    folders = []
+    for root, dirs, files in os.walk(all_folders_in_dir):
+        for d in dirs:
+            if 'zopt' in d:
+                continue
+            f = os.path.join(root,d)
+            if os.path.isfile(f+file):
+                folders.append(f)
+                print(f)
+            
 
+##folders = []
 for folder in folders:
-    if !os.path.isfile(folder+file) or !os.path.isfile(folder+'/masks.txt'):
+    if not os.path.isfile(folder+file) or  not os.path.isfile(folder+'/masks.txt'):
         print(folder,'One of the files not found.')
         continue
     
@@ -30,7 +40,10 @@ for folder in folders:
     segs = np.asarray(segs).astype(np.int)
 
     masks = np.loadtxt(folder+'/masks.txt')
-    basemask = np.loadtxt(folder+'/base_mask.txt')
+    if os.path.isfile(folder+'/base_mask.txt'):
+        basemask = np.loadtxt(folder+'/base_mask.txt')
+    else:
+        basemask = 0
 
     if masknum == 0:
         dat = np.loadtxt(folder+file)
