@@ -145,7 +145,7 @@ class Optimizer:
         self.save_path = args0.save_path
         print('.....Done\n\n')
 
-    def save_rois_metrics(self, rois, population=None, save_path=None, logfile=None):
+    def save_rois_metrics(self, rois, population=None, save_path=None, logfile=None, append=False):
         self.init_metrics()
         if population is None:
             population = Population.Population(self.args,base_mask=self.base_mask,uniform=True)
@@ -157,7 +157,7 @@ class Optimizer:
             self.metrics['maxmet'].append(population.fitness(field,'max'))
             self.metrics['mean'].append(population.fitness(field,'mean'))
             self.metrics['roi'].append(field)
-        self.save_checkpoint()
+        self.save_checkpoint(append)
         self.save_plots()
 
         if logfile == None:
@@ -219,6 +219,7 @@ class Optimizer:
                           zeromask=False):
 
         print('1')
+        lenfolder = len(folder)
         folder = folder + '/compare_masks'+runid
         idnum = 0
         f = folder
@@ -241,7 +242,7 @@ class Optimizer:
             if os.path.isfile(mfile):
                 genetic_mask = np.loadtxt(mfile, dtype=np.uint8).reshape([768,1024])
                 masks.append(genetic_mask)
-                labels.append(mfile.replace('\\','--').replace(':','yy'))
+                labels.append(mfile[lenfolder:].replace('\\','--').replace('/','--').replace(':','yy'))
                 rois.append([])
                 times.append([])
                 nummasks+=1
@@ -277,17 +278,34 @@ class Optimizer:
             i += 1
             print('Time left:',end_time - dt.datetime.now())
             
+            if len(rois[num]) >= 1000:
+                label = labels[num]
+                fdir = folder+'/'+label
+                os.makedirs(fdir,exist_ok=True)
+
+                mode = 'w+'
+                if os.path.isfile(folder+'/averages.txt') and num>0:
+                    mode = 'a'
+                file = open(folder+'/averages.txt',mode)
+                file.write('\n\n'+label+' averaged: \n')
+                self.save_rois_metrics(rois[num], save_path=fdir, logfile=file, append=True)
+                np.savetxt(fdir+'/baseline_times.txt', np.asarray(times[num],dtype='datetime64[s]'), fmt='%s')
+                rois[num]=[]
+                times[num]=[]
+            
         for i,label in enumerate(labels):
             fdir = folder+'/'+label
             os.makedirs(fdir,exist_ok=True)
 
             mode = 'w+'
-            if os.path.isfile(folder+'/log.txt'):
+            if os.path.isfile(folder+'/averages.txt') and i>0:
                 mode = 'a'
-            file = open(folder+'/log.txt',mode)
+            file = open(folder+'/averages.txt',mode)
             file.write('\n\n'+label+' averaged: \n')
-            self.save_rois_metrics(rois[i], save_path=fdir, logfile=file)
-            np.savetxt(fdir+'/baseline_times.txt', np.asarray(times[i],dtype='datetime64[s]'), fmt='%s')
+            self.save_rois_metrics(rois[i], save_path=fdir, logfile=file, append=True)
+            tfile = open(fdir+'/baseline_times.txt', 'a')
+            np.savetxt(tfile, np.asarray(times[i],dtype='datetime64[s]'), fmt='%s')
+            tfile.close()
     
     def run_genetic(self, numgens=None):
         if numgens is None:
@@ -439,15 +457,32 @@ class Optimizer:
         file.close()
         
         
-    def save_checkpoint(self):
-        np.savetxt(self.save_path+'/spot_metric_vals_checkpoint.txt', 1/np.asarray(self.metrics['spot']), fmt='%10.3f')
-        np.savetxt(self.save_path+'/max_metric_vals_checkpoint.txt', self.metrics['maxmet'], fmt='%10.3f')
-        np.savetxt(self.save_path+'/mean_intensity_vals_checkpoint.txt', self.metrics['mean'], fmt='%10.3f')
-        np.savetxt(self.save_path+'/max_intensity_vals_checkpoint.txt', self.metrics['maxint'], fmt='%d')
-        np.savetxt(self.save_path+'/roi.txt', self.metrics['roi'], fmt='%d')
-        np.savetxt(self.save_path+'/masks.txt',self.metrics['masks'], fmt='%d')
+    def save_checkpoint(self, append=False):
+        files = ['/spot_metric_vals_checkpoint.txt',
+                 '/max_metric_vals_checkpoint.txt',
+                 '/mean_intensity_vals_checkpoint.txt',
+                 '/max_intensity_vals_checkpoint.txt',
+                 '/roi.txt',
+                 '/masks.txt']
+
+        mode = 'w'
+        if append: mode = 'a'
+        
+        f = []
+        for file in files:
+            f.append(open(self.save_path+file, mode))
+            
+        np.savetxt(f[0], 1/np.asarray(self.metrics['spot']), fmt='%10.3f')
+        np.savetxt(f[1], self.metrics['maxmet'], fmt='%10.3f')
+        np.savetxt(f[2], self.metrics['mean'], fmt='%10.3f')
+        np.savetxt(f[3], self.metrics['maxint'], fmt='%d')
+        np.savetxt(f[4], self.metrics['roi'], fmt='%d')
+        np.savetxt(f[5],self.metrics['masks'], fmt='%d')
         if not isinstance(self.parent_masks.get_base_mask(),int):
             np.savetxt(self.save_path+'/base_mask.txt',self.parent_masks.get_base_mask(), fmt = '%d')
+
+        for x in f:
+            x.close()
         
     def save_plots(self):
         plt.figure()
@@ -467,7 +502,7 @@ class Optimizer:
 
         plt.figure()
         plt.plot(1/np.asarray(self.metrics['spot']))
-        plt.savefig(self.save_path+'/spot_metrics_plot')
+        plt.savefig(self.save_path+'/spot_metric_plot')
         plt.close()
 
         dim=int(np.sqrt(len(self.metrics['roi'][0])))
