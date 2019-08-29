@@ -10,86 +10,49 @@ import Optimizer, Interface, Population, textwrap
 
 
 def main(args):
-    start_num = 'run_mask_comparison1'
-    run_description = 'Run comparison of genetic and zernike masks.'
+    runid = '_8-26_compareall'
+    run_description = 'Comparing performance of all masks in folder.'
+    
+    ### PARAMS ####
+    start_time = [10,0,0] # [hour,minute,add days]
+    run_time = [12,0,0] # [hours,minutes,seconds]
+    numframes = 10
+    zeromask = True
 
-    start_time,end_time = 22,4
-    numframes = 500    
-    shape = [768,1024]
-    gfile = ''
-    zfile = ''
-    
-    folder = '../Compare_Masks/run_'+str(start_num)
-    os.makedirs(folder,exist_ok=True)
-    shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
-    shutil.copystat('./take_zernike_data.py',folder+'/mainscript.py')
+    folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-23'
+    cpath = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-23\compare_list.txt'
+    clist = np.loadtxt(cpath,dtype=np.str)
+    print(clist)
 
-    file = open(folder+'/log.txt','w+')
-    print('Run Description: ',run_description)
-    file.write('Description: '+run_description+'\n\n')
-    file.close()
-    
-    interface = Interface.Interface(args)
+    maskfiles = []
+    base = False
+    for c in clist:
+        if os.path.isfile(c+'/bestmask.txt'):
+            maskfiles.append(c+'/bestmask.txt')
+        if base == False:
+            if os.path.isfile(c+'/base_mask.txt'):
+                maskfiles.append(c+'/base_mask.txt')
+                base = True
+            
 
-    args.mutate_initial_rate = 0.01
-    args.mutate_final_rate = 0.001
-    args.mutate_decay_factor = 450
-    
-    args.num_initial_metrics = 500
-    args.num_masks = 20
-    args.num_childs = 15
-    args.fitness_func = 'max'
-    args0 = copy.copy(args)
-    
+##    maskfiles = [r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40\bestmask.txt',
+##                 r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40\base_mask.txt',
+##        ]
+
+    for x in maskfiles:
+        print(x)
+    interface = Interface.Interface(args)    
     zopt = Optimizer.Optimizer(args,interface)
-  
-    genetic_mask = np.loadtxt(gfile, dtype=np.uint8).reshape(shape)
-    zernike_mask = np.loadtxt(zfile, dtype=np.uint8).reshape(shape)
-    masks = [genetic_mask,zernike_mask]
-    
-    labels = ['genetic','zernike']
-    rois = [[],[]]
-    times = [[],[]]
 
-    t0 = dt.datetime.now()
-    start_time = dt.datetime.combine(t0.date(),dt.time(start_time))
-    end_time = dt.datetime.combine((t0+dt.timedelta(1)).date(),dt.time(end_time))
-
-    print(start_time,end_time,dt.time())
-
-    while start_time > dt.datetime.now():
-        print('WAITING... Time left before start:', start_time - dt.datetime.now())
-        time.sleep(5)
-
-    while end_time > dt.datetime.now():
-        rnd = np.random.randint(0,2)
-        zopt.base_mask = masks[rnd]
-        times[rnd].append(dt.datetime.now())
-        rois[rnd].append(zopt.get_baseline_intensity(numframes))
-
-    times = np.asarray(times)
-    rois = np.asarray(rois)
-
-    for i,label in enumerate(labels):
-        fdir = folder+'/'+label
-        zopt.save_rois_metrics(rois[i,:], save_path=fdir)
-        np.savetxt(fdir+'/baseline_times.txt', times[i,:], np.asarray(times,dtype='datetime64[s]'), fmt='%s')
+    zopt.run_compare_masks(start_time,
+                          run_time,
+                          numframes,
+                          folder,
+                          maskfiles,
+                          runid,
+                          run_description,
+                          zeromask)
         
-
-        
-        
-        
-
-    
-##    zopt.get_baseline_intensity(baseline_frames)
-##    zopt.get_baseline_maxmean(run_minutes, num_to_average)
-##    file = open(folder+'/log.txt','a')
-##    file.write('baseline time: '+str(zopt.get_time()))
-##    file.write('\nbaseline frames: '+str(baseline_frames))
-##    file.write('\nbaseline num_to_average: '+str(num_to_average))
-##    file.close()
-
-
             
 if __name__ == '__main__':
     if len(sys.argv)==2 and sys.argv[1]=='--help':

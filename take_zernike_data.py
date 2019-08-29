@@ -9,17 +9,9 @@ import Optimizer, Interface, Population, textwrap
 
 
 def main(args):
-    start_num = '8-19_baseline_refbeam_noslm'
-    run_description = 'Same as 8-19_baseline_refbeam run but with mirror \
-in place of SLM. \
-\
-\
-Testing baseline over the course of 2 hours, \
-averaging over 500 camera frames at a time. Added reference beam and \
-normalization of output field based on running average of 1 reference \
-beam frames. Also increased exposure time to value -2 to \
-reduce SLM flickering noise. Doing Zernike and genetic optimization over the \
-weekend in a long run. Lights completely out.'
+    start_num = '8-21_refbeam40'
+    run_description = 'Zernike and genetic optimization with reference beam \
+running average over 40 frames. Exposure value at -2.'
     
     folder = '../run_'+str(start_num)
     os.makedirs(folder,exist_ok=True)
@@ -54,20 +46,29 @@ weekend in a long run. Lights completely out.'
 ##    modes = [3]
 
     args = copy.copy(args0)
-    args.save_path = folder+'/zopt'
+    args.save_path = folder
     zopt = Optimizer.Optimizer(args,interface)
 
-    baseline_frames = 100
-    num_to_average = 500
-    run_minutes = 18*60
-##    zopt.get_baseline_intensity(baseline_frames)
-    zopt.get_baseline_maxmean(run_minutes, num_to_average)
-    file = open(folder+'/log.txt','a')
-    file.write('baseline time: '+str(zopt.get_time()))
-    file.write('\nbaseline frames: '+str(baseline_frames))
-    file.write('\nbaseline num_to_average: '+str(num_to_average))
-    file.close()
+##    baseline_frames = 100
+##    num_to_average = 500
+##    run_minutes = 1*60
+####    zopt.get_baseline_intensity(baseline_frames)
+##    zopt.get_baseline_maxmean(run_minutes, num_to_average)
+##    file = open(folder+'/log.txt','a')
+##    file.write('baseline time: '+str(zopt.get_time()))
+##    file.write('\nbaseline frames: '+str(baseline_frames))
+##    file.write('\nbaseline num_to_average: '+str(num_to_average))
+##    file.close()
+
+    ####  WAIT  ####
+##    t0 = datetime.datetime.now()
+##    td = datetime.datetime.combine(t0.date(),datetime.time(22))
+##    while datetime.datetime.now() < td:
+##        print('WAITING... Time left before start:',td - datetime.datetime.now())
+##        time.sleep(60)
     
+    args.save_path = folder+'/zopt'
+    zopt = Optimizer.Optimizer(args,interface)
     if os.path.isfile(args.save_path+'/optimized_zmodes.txt'):
         opt_zmodes = np.loadtxt(args.save_path+'/optimized_zmodes.txt')
         print(opt_zmodes)
@@ -76,13 +77,13 @@ weekend in a long run. Lights completely out.'
     else:
         zopt.run_zernike(modes,[-60,60])
         zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
-    
         
-    
+##    zopt_mask = 0
+
     for coeff in coeffs:
         for mode in modes:
             for segment in segments:
-                if mode!=3 and segment[0]==32:
+                if segment[0]==32:
                     continue
                 for measure in [True]:
                     clist = np.zeros(13)
@@ -96,10 +97,10 @@ weekend in a long run. Lights completely out.'
     ##                args.segment_height = 48
                     args.segment_width = segment[0]
                     args.segment_height = segment[1]
-                    args.gens = 1200
+                    args.gens = 1000
                     if segment[0]==32:
                         args.mutate_initial_rate = 0.005
-                        args.gens=2000
+                        args.gens=1500
                     args.measure_all = measure
                     args.add_uniform_childs = not measure
 
