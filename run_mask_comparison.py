@@ -10,21 +10,37 @@ import Optimizer, Interface, Population, textwrap
 
 
 def main(args):
-    runid = '_8-22_short_noref3'
-    run_description = 'Comparing performance of the zernike mask vs. the zernike + genetic mask. Middle of day run.'
+    runid = '_8-26_compareall'
+    run_description = 'Comparing performance of all masks in folder.'
     
     ### PARAMS ####
-    start_time = [12,0,0] # [hour,minute,add days]
-    run_time = [0,0,20] # [hours,minutes,seconds]
+    start_time = [10,0,0] # [hour,minute,add days]
+    run_time = [12,0,0] # [hours,minutes,seconds]
     numframes = 10
     zeromask = True
 
-    folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40'
-    maskfiles = [r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40\bestmask.txt',
-                 r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40\base_mask.txt',
-        ]
+    folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-23'
+    cpath = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-23\compare_list.txt'
+    clist = np.loadtxt(cpath,dtype=np.str)
+    print(clist)
 
-   
+    maskfiles = []
+    base = False
+    for c in clist:
+        if os.path.isfile(c+'/bestmask.txt'):
+            maskfiles.append(c+'/bestmask.txt')
+        if base == False:
+            if os.path.isfile(c+'/base_mask.txt'):
+                maskfiles.append(c+'/base_mask.txt')
+                base = True
+            
+
+##    maskfiles = [r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40\bestmask.txt',
+##                 r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40\base_mask.txt',
+##        ]
+
+    for x in maskfiles:
+        print(x)
     interface = Interface.Interface(args)    
     zopt = Optimizer.Optimizer(args,interface)
 
