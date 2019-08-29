@@ -19,6 +19,8 @@ all_folders_in_dir = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-23'
 
 if all_folders_in_dir != '':
     folders = []
+    loglist = open(os.path.join(all_folders_in_dir,'compare_list.txt'),'w+')
+    
     for root, dirs, files in os.walk(all_folders_in_dir):
         for d in dirs:
             if 'zopt' in d:
@@ -26,10 +28,13 @@ if all_folders_in_dir != '':
             f = os.path.join(root,d)
             if os.path.isfile(f+file):
                 folders.append(f)
+                loglist.write(f+'\n')
                 print(f)
+    loglist.close()
             
 
-##folders = []
+folders = []
+
 for folder in folders:
     if not os.path.isfile(folder+file) or  not os.path.isfile(folder+'/masks.txt'):
         print(folder,'One of the files not found.')
