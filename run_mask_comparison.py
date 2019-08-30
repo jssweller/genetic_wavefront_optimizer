@@ -11,17 +11,17 @@ import Optimizer, Interface, Population, textwrap
 
 def main(args):
     
-    runid = '_8-26_compareall'
+    runid = '_8-30_compareall'
     run_description = 'Comparing performance of all masks in folder.'
     
     ### PARAMS ####
     start_time = [10,0,0] # [hour,minute,add days]
-    run_time = [12,0,0] # [hours,minutes,seconds]
+    run_time = [0,2,0] # [hours,minutes,seconds]
     numframes = 10
     zeromask = True
 
-    folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-23'
-
+    folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8_23-28_compare'
+    
     if not os.path.isfile(folder+'/compare_list.txt'):
         maskfiles = Optimizer.get_mask_compare_list(folder)
     else:
@@ -33,6 +33,14 @@ def main(args):
     interface = Interface.Interface(args)    
     zopt = Optimizer.Optimizer(args,interface)
 
+##    folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8_23-28_compare\zopt_best_8_28'
+##    for root,dirs,files in os.walk(folder):
+##        for file in files:
+##            if file.find('zmodes') == -1:
+##                continue
+##            zopt.save_zernike_mask(os.path.join(root,file))
+            
+    
     zopt.run_compare_masks(start_time,
                           run_time,
                           numframes,
@@ -41,7 +49,7 @@ def main(args):
                           runid,
                           run_description,
                           zeromask,
-                          mask_populations=None,
+                          cmasks=None,
                           mask_labels=None)
         
             
