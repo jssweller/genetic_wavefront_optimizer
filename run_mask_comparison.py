@@ -41,6 +41,7 @@ def main(args):
 ##            zopt.save_zernike_mask(os.path.join(root,file))
             
     
+
     zopt.run_compare_masks(start_time,
                           run_time,
                           numframes,
@@ -51,7 +52,7 @@ def main(args):
                           zeromask,
                           cmasks=None,
                           mask_labels=None)
-        
+       
             
 if __name__ == '__main__':
     if len(sys.argv)==2 and sys.argv[1]=='--help':

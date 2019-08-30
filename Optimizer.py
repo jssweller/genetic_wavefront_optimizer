@@ -204,7 +204,6 @@ class Optimizer:
         self.parent_masks.replace_parents(self.child_masks)
         self.update_metrics()
         self.gen+=1
-        
 
     def run_compare_masks(self,
                           start_time,
@@ -260,7 +259,6 @@ class Optimizer:
                     labels.append('mask_'+str(j))
                 else:
                     labels.append(mask_labels[j])
-                
 
         print(labels)
         if zeromask:
@@ -290,7 +288,7 @@ class Optimizer:
             rois[num].extend(self.get_baseline_intensity(numframes))
             i += 1
             print('Time left:',end_time - dt.datetime.now())
-            
+
             if len(rois[num]) >= 1000:
                 label = labels[num]
                 fdir = folder+'/'+label
