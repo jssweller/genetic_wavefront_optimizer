@@ -398,16 +398,17 @@ class Optimizer:
         self.parent_masks.update_zernike_parent(best_zmodes)
         self.save_plots()
         self.save_path = args0.save_path
-    
+
     def get_coeff_list(self,zmode,coeff):
         cfs = np.zeros(26)
         cfs[zmode-3] = coeff
         return cfs
     
     def get_best_coefficient(self,zmode,coeffs,repeat=30):
-
         maxmets=[]
+        spotmets=[]
         print('coeff',end='')
+        vals
         for i,coeff in enumerate(coeffs):
             print('...'+str(coeff),end='')
             self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
@@ -418,12 +419,20 @@ class Optimizer:
             self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
             self.interface.get_output_fields(self.parent_masks,repeat)
             self.update_metrics(update_type='initial',save_mask=False)
-            maxmets.append(self.metrics['maxmet'][-1])        
+            maxmets.append(self.metrics['maxmet'][-1])
+            spotmets.append(self.metrics['spot'][-1])
         print('\n')
-        best_coeff = np.argmax(maxmets)
-        if isinstance(best_coeff,np.ndarray):
-            best_coeff = best_coeff[-1]
-        return coeffs[best_coeff]
+##        max_coeff = np.argmax(maxmets)
+##        spot_coeff = np.argmin(spotmets)
+
+        maxcoeff = Optimizer.get_polybest(coeffs,maxmets,np.argmax)
+        spotcoeff = Optimizer.get_polybest(coeffs,spotmets,np.argmin)
+        best_coeff = int((maxcoeff+spotcoeff)/2)
+        
+##        if isinstance(best_coeff,np.ndarray):
+##            best_coeff = best_coeff[-1]
+##        return coeffs[best_coeff]
+        return best_coeff
  
     def initial_log(self):
         os.makedirs(self.save_path, exist_ok=True)
@@ -562,6 +571,13 @@ class Optimizer:
         plt.savefig(self.save_path+'/final_mask')
         plt.close()
 
+    def save_zernike_mask(self, zmodes_file):
+        coeffs = np.loadtxt(zmodes_file)
+        print(zmodes_file)
+        print(coeffs.shape, coeffs)
+        zmask = self.parent_masks.create_zernike_mask(coeffs)
+        np.savetxt(os.path.dirname(zmodes_file)+'/bestmask.txt',zmask, fmt='%d')
+
 ####
     
         
@@ -576,5 +592,15 @@ def get_mask_compare_list(directory,names=['bestmask.txt'],write_to_file=True):
                         maskfiles.append(mfile)
                         print(mfile,'...added to compare list.')
         if write_to_file:
-            np.savetxt(os.path.join(directory,'compare_list.txt'),maskfiles)
+            with open(os.path.join(directory,'compare_list.txt'),'w+') as f:
+                for m in maskfiles:
+                    f.write(m+'\n')
         return maskfiles
+
+def get_polybest(x,y,best_func=np.argmin):
+    pfit = np.polyfit(x,y,2)
+    p = np.poly1d(pfit)
+    frange = np.arange(min(x),max(x),1)
+    zbest = best_func(p(frange))
+    return int(frange[zbest])
+    
