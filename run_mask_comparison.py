@@ -10,6 +10,7 @@ import Optimizer, Interface, Population, textwrap
 
 
 def main(args):
+    
     runid = '_8-26_compareall'
     run_description = 'Comparing performance of all masks in folder.'
     
@@ -20,24 +21,12 @@ def main(args):
     zeromask = True
 
     folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-23'
-    cpath = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-23\compare_list.txt'
-    clist = np.loadtxt(cpath,dtype=np.str)
-    print(clist)
 
-    maskfiles = []
-    base = False
-    for c in clist:
-        if os.path.isfile(c+'/bestmask.txt'):
-            maskfiles.append(c+'/bestmask.txt')
-        if base == False:
-            if os.path.isfile(c+'/base_mask.txt'):
-                maskfiles.append(c+'/base_mask.txt')
-                base = True
+    if not os.path.isfile(folder+'/compare_list.txt'):
+        maskfiles = Optimizer.get_mask_compare_list(folder)
+    else:
+        maskfiles = np.loadtxt(folder+'/compare_list.txt',dtype=np.str)
             
-
-##    maskfiles = [r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40\bestmask.txt',
-##                 r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-21_refbeam40\base_mask.txt',
-##        ]
 
     for x in maskfiles:
         print(x)
@@ -51,7 +40,9 @@ def main(args):
                           maskfiles,
                           runid,
                           run_description,
-                          zeromask)
+                          zeromask,
+                          mask_populations=None,
+                          mask_labels=None)
         
             
 if __name__ == '__main__':
