@@ -84,14 +84,11 @@ class Optimizer:
         print('\nGetting final metrics...\n')
         args0 = copy.copy(self.args)
         self.parent_masks.ranksort()
-        final_mask = np.array(self.parent_masks.get_masks()[-1])
-        uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
-        uniform_pop.update_masks([final_mask])
-        ## Undo this change after run is over
-##        self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
-        self.interface.get_output_fields(uniform_pop,repeat=500)
-        self.update_metrics(uniform_pop, 'final')
-        self.get_final_mean_intensity()
+        final_mask = np.array(self.parent_masks.get_slm_masks()[-1])
+        masks = [final_mask,self.base_mask]
+        mask_labels = ['final_mask','base_mask']
+        zeromask = self.basemask != 0
+        zopt.run_compare_masks(start_time=[0,0,0], run_time=[0,10,0], numframes=5, cmasks=masks, mask_labels=mask_labels)
         
     def get_final_mean_intensity(self):
         print('\nGetting final mean intensity...\n')
@@ -207,47 +204,63 @@ class Optimizer:
         self.parent_masks.replace_parents(self.child_masks)
         self.update_metrics()
         self.gen+=1
+        
 
     def run_compare_masks(self,
                           start_time,
                           run_time,
                           numframes,
-                          folder,
-                          maskfiles,
+                          folder='',
+                          maskfiles='',
                           runid='',
                           run_description='',
-                          zeromask=False):
+                          zeromask=False,
+                          cmasks=None,
+                          mask_labels=None):
 
-        print('1')
+        if folder == '':
+            folder = self.save_path
         lenfolder = len(folder)
         folder = folder + '/compare_masks'+runid
         idnum = 0
         f = folder
-        while os.path.isdir(folder):
-            folder = f+str(idnum+1)
-            idnum+=1
-        os.makedirs(folder,exist_ok=True)
-        file = open(folder+'/log.txt','w+')
-        print('Run Description: ',run_description)
-        file.write('Description: '+run_description+'\n\n')
-        for mfile in maskfiles:
-            if os.path.isfile(mfile):
-                file.write('Mask file:' + mfile + '\n')
-        file.close()
-        print('2')
-
+        
         masks, labels, rois, times = [],[],[],[]
         nummasks = 0
-        for mfile in maskfiles:
-            if os.path.isfile(mfile):
-                genetic_mask = np.loadtxt(mfile, dtype=np.uint8).reshape([768,1024])
-                masks.append(genetic_mask)
-                labels.append(mfile[lenfolder:].replace('\\','--').replace('/','--').replace(':','yy'))
-                rois.append([])
-                times.append([])
-                nummasks+=1
-            else:
-                print('File not found: ',mfile)
+
+        if cmasks == None:
+            while os.path.isdir(folder):
+                folder = f+str(idnum+1)
+                idnum+=1
+            os.makedirs(folder,exist_ok=True)
+            file = open(folder+'/log.txt','w+')
+            print('Run Description: ',run_description)
+            file.write('Description: '+run_description+'\n\n')
+            for mfile in maskfiles:
+                if os.path.isfile(mfile):
+                    file.write('Mask file:' + mfile + '\n')
+            file.close()
+            print('2')
+
+            for mfile in maskfiles:
+                if os.path.isfile(mfile):
+                    genetic_mask = np.loadtxt(mfile, dtype=np.uint8).reshape([768,1024])
+                    masks.append(genetic_mask)
+                    labels.append(mfile[lenfolder:].replace('\\','--').replace('/','--').replace(':','yy'))
+                    rois.append([])
+                    times.append([])
+                    nummasks+=1
+                else:
+                    print('File not found: ',mfile)
+
+        else:
+            for j, mask in enumerate(cmasks):
+                masks.append(mask)
+                if mask_labels==None:
+                    labels.append('mask_'+str(j))
+                else:
+                    labels.append(mask_labels[j])
+                
 
         print(labels)
         if zeromask:
@@ -478,6 +491,7 @@ class Optimizer:
         np.savetxt(f[3], self.metrics['maxint'], fmt='%d')
         np.savetxt(f[4], self.metrics['roi'], fmt='%d')
         np.savetxt(f[5],self.metrics['masks'], fmt='%d')
+        np.savetxt(self.save_path+'/bestmask.txt',self.parent_masks.get_slm_masks()[-1], fmt = '%d')
         if not isinstance(self.parent_masks.get_base_mask(),int):
             np.savetxt(self.save_path+'/base_mask.txt',self.parent_masks.get_base_mask(), fmt = '%d')
 
@@ -547,8 +561,20 @@ class Optimizer:
         plt.colorbar()
         plt.savefig(self.save_path+'/final_mask')
         plt.close()
-        
-    def grab_screenshot(self,name):
-        ImageGrab.grab().save(self.save_path+'/'+name+'_screenshot.png')
-        
 
+####
+    
+        
+def get_mask_compare_list(directory,names=['bestmask.txt'],write_to_file=True):
+        maskfiles = []
+        for root, dirs, files in os.walk(directory):
+            for d in dirs:
+                f = os.path.join(root,d)
+                for name in names:
+                    mfile = os.path.join(f,name)
+                    if os.path.isfile(mfile):
+                        maskfiles.append(mfile)
+                        print(mfile,'...added to compare list.')
+        if write_to_file:
+            np.savetxt(os.path.join(directory,'compare_list.txt'),maskfiles)
+        return maskfiles
