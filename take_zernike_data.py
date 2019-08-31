@@ -9,10 +9,9 @@ import Optimizer, Interface, Population, textwrap
 
 
 def main(args):
-    start_num = '8-21_refbeam40'
-    run_description = 'Zernike and genetic optimization with reference beam \
-running average over 40 frames. Exposure value at -2.'
-    
+    start_num = '8-30_bestzernike'
+    run_description = 'Genetic optimization using best zmask from run_8-28. No reference beam. \
+Exposure value at -2.'
     folder = '../run_'+str(start_num)
     os.makedirs(folder,exist_ok=True)
     shutil.copy('./take_zernike_data.py',folder+'/mainscript.py')
@@ -36,12 +35,12 @@ running average over 40 frames. Exposure value at -2.'
     args0 = copy.copy(args)
     
     
-    coeffs = [0,50,100,150,200]
+    coeffs = [0]
     modes = np.arange(3,15)
 
 ##    segments = [[64,96],[64,48],[32,48],[32,24]]
 ##    segments = [[64,96],[32,48]]
-    segments = [[64,96],[32,48]]
+    segments = [[64,96],[32,48],[16,32]]
 
 ##    modes = [3]
 
@@ -75,16 +74,16 @@ running average over 40 frames. Exposure value at -2.'
         zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
         print(zopt_mask.shape)
     else:
-        zopt.run_zernike(modes,[-60,60])
+        zopt.run_zernike(modes,[-80,80])
         zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
         
 ##    zopt_mask = 0
-
+    modes = np.arange(3)
     for coeff in coeffs:
         for mode in modes:
+##            if mode > 7:
+##                zopt_mask = 0
             for segment in segments:
-                if segment[0]==32:
-                    continue
                 for measure in [True]:
                     clist = np.zeros(13)
                     clist[mode-3]=coeff
@@ -98,9 +97,12 @@ running average over 40 frames. Exposure value at -2.'
                     args.segment_width = segment[0]
                     args.segment_height = segment[1]
                     args.gens = 1000
-                    if segment[0]==32:
+                    if segment[0]!=64:
                         args.mutate_initial_rate = 0.005
                         args.gens=1500
+                        if segment != 32:
+                            args.gens=2000
+                            
                     args.measure_all = measure
                     args.add_uniform_childs = not measure
 
@@ -112,7 +114,10 @@ running average over 40 frames. Exposure value at -2.'
                     gopt.run_genetic()
                     print('\n\nDONE with genetic optimization............\n\n')
 
-            print('\n\nDONE with zernike optimization............\n\n') 
+            print('\n\nDONE with zernike optimization............\n\n')
+
+        # compare masks in folder
+        gopt.run_compare_all_in_folder(folder,run_time=[6,0,0])
 
             
 if __name__ == '__main__':
