@@ -319,6 +319,34 @@ class Optimizer:
             tfile = open(fdir+'/baseline_times.txt', 'a')
             np.savetxt(tfile, np.asarray(times[i],dtype='datetime64[s]'), fmt='%s')
             tfile.close()
+
+    def run_compare_all_in_folder(self,folder,run_time):
+        ### PARAMS ####
+        runid = '_compareall'
+        run_description = 'Comparing performance of all masks in folder.'
+        start_time = [0,0,0] # [hour,minute,add days]
+##        run_time = [12,0,0] # [hours,minutes,seconds]
+        numframes = 10
+        zeromask = True
+
+        folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8_23-28_compare'
+        
+        if not os.path.isfile(folder+'/compare_list.txt'):
+            maskfiles = Optimizer.get_mask_compare_list(folder)
+        else:
+            maskfiles = np.loadtxt(folder+'/compare_list.txt',dtype=np.str)
+        print([x for x in maskfiles])
+        self.run_compare_masks(start_time,
+                          run_time,
+                          numframes,
+                          folder,
+                          maskfiles,
+                          runid,
+                          run_description,
+                          zeromask,
+                          cmasks=None,
+                          mask_labels=None)
+        
     
     def run_genetic(self, numgens=None):
         if numgens is None:
