@@ -9,14 +9,12 @@ import time, datetime, sys, os, argparse, copy, shutil
 
 # if 0, find best mask based on metric file. Else uses mask number.
 file = '/roi.txt'
-all_folders_in_dir = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-23\compare_masks_8-26_compareall'
+all_folders_in_dir = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8_23-28_compare\compare_masks_8-30_compareall'
 
 if all_folders_in_dir != '':
     folders = []
     for root, dirs, files in os.walk(all_folders_in_dir):
         for d in dirs:
-            if 'zopt' in d:
-                continue
             f = os.path.join(root,d)
             if os.path.isfile(f+file):
                 folders.append(f)
@@ -32,10 +30,10 @@ print(keys)
 labels = []
 for k, folder in enumerate(folders):
     l = folder[folder.find('--')+2:folder.rfind('.')].replace('coeff_0--','').replace('mode_','m')
-    if l.find('base') == -1:
+    if (l.find('base') == -1) and (l.find('zopt') == -1):
         l = l[:l.find('_mea')]
     else:
-        l='zernike'
+        l=l[:l.find('bestmask')-2].replace('_best_','')
         znum = k
     if l.find('noma') != -1:
         l='nomask'
