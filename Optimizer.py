@@ -87,8 +87,8 @@ class Optimizer:
         final_mask = np.array(self.parent_masks.get_slm_masks()[-1])
         masks = [final_mask,self.base_mask]
         mask_labels = ['final_mask','base_mask']
-        zeromask = self.basemask != 0
-        zopt.run_compare_masks(start_time=[0,0,0], run_time=[0,10,0], numframes=5, cmasks=masks, mask_labels=mask_labels)
+        zeromask = self.base_mask != 0
+        self.run_compare_masks(start_time=[0,0,0], run_time=[0,10,0], numframes=5, cmasks=masks, mask_labels=mask_labels)
         
     def get_final_mean_intensity(self):
         print('\nGetting final mean intensity...\n')
@@ -256,6 +256,9 @@ class Optimizer:
         else:
             for j, mask in enumerate(cmasks):
                 masks.append(mask)
+                nummasks += 1
+                rois.append([])
+                times.append([])
                 if mask_labels==None:
                     labels.append('mask_'+str(j))
                 else:
@@ -328,11 +331,9 @@ class Optimizer:
 ##        run_time = [12,0,0] # [hours,minutes,seconds]
         numframes = 10
         zeromask = True
-
-        folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8_23-28_compare'
         
         if not os.path.isfile(folder+'/compare_list.txt'):
-            maskfiles = Optimizer.get_mask_compare_list(folder)
+            maskfiles = get_mask_compare_list(folder)
         else:
             maskfiles = np.loadtxt(folder+'/compare_list.txt',dtype=np.str)
         print([x for x in maskfiles])
@@ -363,7 +364,7 @@ class Optimizer:
             print('generation',self.gen,end=' ...\t')
             self.parent_masks.update_num_mutations(self.gen,numgens)
             self.run_generation()
-            if self.gen % int(numgens/4)==0:
+            if self.gen % int(numgens/min(4,numgens))==0:
                 self.save_checkpoint()
             print('Time', round(time.time()-t0,2),'s', end=' ...\t')
             print('Fitness:', round(max(self.parent_masks.get_fitness_vals()),2))
@@ -436,7 +437,6 @@ class Optimizer:
         maxmets=[]
         spotmets=[]
         print('coeff',end='')
-        vals
         for i,coeff in enumerate(coeffs):
             print('...'+str(coeff),end='')
             self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
@@ -453,8 +453,8 @@ class Optimizer:
 ##        max_coeff = np.argmax(maxmets)
 ##        spot_coeff = np.argmin(spotmets)
 
-        maxcoeff = Optimizer.get_polybest(coeffs,maxmets,np.argmax)
-        spotcoeff = Optimizer.get_polybest(coeffs,spotmets,np.argmin)
+        maxcoeff = get_polybest(coeffs,maxmets,np.argmax)
+        spotcoeff = get_polybest(coeffs,spotmets,np.argmin)
         best_coeff = int((maxcoeff+spotcoeff)/2)
         
 ##        if isinstance(best_coeff,np.ndarray):
