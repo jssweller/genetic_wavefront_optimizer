@@ -9,7 +9,7 @@ import time, datetime, sys, os, argparse, copy, shutil
 
 # if 0, find best mask based on metric file. Else uses mask number.
 file = '/roi.txt'
-all_folders_in_dir = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8_23-28_compare\compare_masks_8-30_compareall'
+all_folders_in_dir = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8-30_bestzernike\mode_0_coeff_0'
 
 if all_folders_in_dir != '':
     folders = []
@@ -46,38 +46,41 @@ for k, folder in enumerate(folders):
                 spath = os.path.join(root,file[:file.find('_vals')]+'_plot')
                 f = os.path.join(root,file)
                 dat = np.loadtxt(f)
-                
-##                plt.figure()
-##                fig = plt.plot(np.arange(dat.shape[0]),dat)
-##                plt.savefig(spath)
-##                plt.close()
+
+                ## PLOT METRICS IN FOLDER         
+                plt.figure()
+                fig = plt.plot(np.arange(dat.shape[0]),dat)
+                plt.savefig(spath)
+                plt.close()
 
                 for key in keys:
                     if file.find(key) != -1:
                         mets[key].append(np.mean(dat))
-print(np.shape(mets))
-print(mets)
 
-sort = np.argsort(mets['max_metric'])
-labels = np.array(labels)[sort]
-print('sorted',sort)
-print('labels',labels)
-
-for key in keys:
-    dat = np.array(mets[key])
-    dat = dat/dat[znum]
-    dat = dat[sort]
-    plt.figure(figsize=(8,6))
-    ax = plt.axes()
-    plt.bar(np.arange(dat.shape[0]),dat,width=0.5)
-    plt.plot(plt.xlim(),[1,1],lw=1,ls='--',c='k')
-    plt.ylim([np.min(dat)-.1,plt.ylim()[1]])
-    plt.title(key)
-
-    ax.set_xticks(np.arange(dat.shape[0]))
-    ax.set_xticklabels(labels, rotation=40, ha='right')
-    plt.tight_layout()
-    plt.savefig(os.path.join(all_folders_in_dir,str(key)+'_compare_plot'),dpi=300)
+plt.show() 
+##print(np.shape(mets))
+##print(mets)
+##
+##sort = np.argsort(mets['max_metric'])
+##labels = np.array(labels)[sort]
+##print('sorted',sort)
+##print('labels',labels)
+##
+##for key in keys:
+##    dat = np.array(mets[key])
+##    dat = dat/dat[znum]
+##    dat = dat[sort]
+##    plt.figure(figsize=(8,6))
+##    ax = plt.axes()
+##    plt.bar(np.arange(dat.shape[0]),dat,width=0.5)
+##    plt.plot(plt.xlim(),[1,1],lw=1,ls='--',c='k')
+##    plt.ylim([np.min(dat)-.1,plt.ylim()[1]])
+##    plt.title(key)
+##
+##    ax.set_xticks(np.arange(dat.shape[0]))
+##    ax.set_xticklabels(labels, rotation=40, ha='right')
+##    plt.tight_layout()
+##    plt.savefig(os.path.join(all_folders_in_dir,str(key)+'_compare_plot'),dpi=300)
 
 plt.show()
 
