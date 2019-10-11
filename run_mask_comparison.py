@@ -11,22 +11,23 @@ import Optimizer, Interface, Population, textwrap
 
 def main(args):
     
-    runid = '_8-30_compareall'
+    runid = '_compareall'
     run_description = 'Comparing performance of all masks in folder.'
     
     ### PARAMS ####
-    start_time = [10,0,0] # [hour,minute,add days]
-    run_time = [0,2,0] # [hours,minutes,seconds]
-    numframes = 10
+    start_time = [0,0,0] # [hour,minute,add days]
+    run_time = [3,0,0] # [hours,minutes,seconds]
+    numframes = 1
     zeromask = True
 
-    folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8_23-28_compare'
+    folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_10-9_baseline_slm'
     
     if not os.path.isfile(folder+'/compare_list.txt'):
         maskfiles = Optimizer.get_mask_compare_list(folder)
     else:
-        maskfiles = np.loadtxt(folder+'/compare_list.txt',dtype=np.str)
-            
+        f = open(folder+'/compare_list.txt')
+        maskfiles = [x.strip() for x in f]
+        f.close()
 
     for x in maskfiles:
         print(x)
