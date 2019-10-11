@@ -52,7 +52,7 @@ for folder in folders:
 
     if masknum == 0:
         dat = np.loadtxt(folder+file)
-        masknum = np.argmax(dat)
+        masknum = np.argmax(dat[int(dat.shape[0]/4):])
         print('Mask number', masknum)
 
     bestmask = masks[masknum]
@@ -64,4 +64,4 @@ for folder in folders:
     bestmask = bestmask.astype(np.uint8)
     print(bestmask.shape)
 
-    np.savetxt(folder+'/bestmask.txt',bestmask.reshape((1,-1)),fmt='%d')
+    np.savetxt(folder+'/bestmask_max.txt',bestmask.reshape((1,-1)),fmt='%d')
