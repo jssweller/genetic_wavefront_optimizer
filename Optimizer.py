@@ -176,35 +176,6 @@ class Optimizer:
                        
         self.save_path = self.args.save_path
     
-    def run_generation(self):
-        if self.gen==1:
-            self.interface.get_output_fields(self.parent_masks)
-            self.uniform_scale = np.mean([self.parent_masks.get_output_fields()[:2],self.parent_masks.get_output_fields()[-2:]])
-            self.parent_masks.ranksort()                
-            self.update_metrics()
-
-        self.child_masks = self.parent_masks.make_children(self.uniform_childs)
-        t0 = time.time()
-        self.interface.get_output_fields(self.child_masks)
-        tt = time.time() - t0
-        
-        if self.measure_all:
-            self.child_masks.ranksort()
-            t0 = time.time()
-            self.interface.get_output_fields(self.parent_masks)
-            tt += time.time()-t0
-            self.parent_masks.ranksort()
-        else:
-##            if self.gen > int(self.numgens * 0.9):
-##                self.interface.get_output_fields(self.parent_masks)
-##                self.parent_masks.ranksort(scale=self.uniform_scale)
-            self.child_masks.ranksort(scale=self.uniform_scale)
-
-        print('SLMtime', round(tt,2),'s', end=' ...\t')
-        self.parent_masks.replace_parents(self.child_masks)
-        self.update_metrics()
-        self.gen+=1
-        
 
     def run_compare_masks(self,
                           start_time,
@@ -349,6 +320,35 @@ class Optimizer:
                           mask_labels=None)
         
     
+    def run_generation(self):
+        if self.gen==1:
+            self.interface.get_output_fields(self.parent_masks)
+            self.uniform_scale = np.mean([self.parent_masks.get_output_fields()[:2],self.parent_masks.get_output_fields()[-2:]])
+            self.parent_masks.ranksort()                
+            self.update_metrics()
+
+        self.child_masks = self.parent_masks.make_children(self.uniform_childs)
+        t0 = time.time()
+        self.interface.get_output_fields(self.child_masks)
+        tt = time.time() - t0
+        
+        if self.measure_all:
+            self.child_masks.ranksort()
+            t0 = time.time()
+            self.interface.get_output_fields(self.parent_masks)
+            tt += time.time()-t0
+            self.parent_masks.ranksort()
+        else:
+##            if self.gen > int(self.numgens * 0.9):
+##                self.interface.get_output_fields(self.parent_masks)
+##                self.parent_masks.ranksort(scale=self.uniform_scale)
+            self.child_masks.ranksort(scale=self.uniform_scale)
+
+        print('SLMtime', round(tt,2),'s', end=' ...\t')
+        self.parent_masks.replace_parents(self.child_masks)
+        self.update_metrics()
+        self.gen+=1
+        
     def run_genetic(self, numgens=None):
         if numgens is None:
             numgens = self.numgens
@@ -369,12 +369,12 @@ class Optimizer:
             print('Time', round(time.time()-t0,2),'s', end=' ...\t')
             print('Fitness:', round(max(self.parent_masks.get_fitness_vals()),2))
 
-        self.get_final_metrics()
         self.save_checkpoint()
         self.final_log()
         self.save_plots()
+        self.get_final_metrics()
         
-    def run_zernike(self, zmodes, coeff_range):
+    def run_zernike(self, zmodes, coeff_range, cumulative=True):
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
         print('Zernike optimizer running...')
         best_zmodes = np.zeros(26)
@@ -410,8 +410,8 @@ class Optimizer:
 ##                coeffs = np.arange(best_coeff-int(snum/2),best_coeff+int(snum/2),2)
 ##                best_coeff = int(np.mean([self.get_best_coefficient(zmode,coeffs),best_coeff]))
             
-            
-            base_mask += self.parent_masks.create_zernike_mask(self.get_coeff_list(zmode,best_coeff))
+            if cumulative:
+                base_mask += self.parent_masks.create_zernike_mask(self.get_coeff_list(zmode,best_coeff))
             self.parent_masks.update_base_mask(base_mask)
             best_zmodes += self.get_coeff_list(zmode,best_coeff)
         
@@ -419,13 +419,14 @@ class Optimizer:
         self.parent_masks.update_zernike_parent(best_zmodes)
         self.parent_masks.update_base_mask(initial_base_mask)
         self.interface.get_output_fields(self.parent_masks)
-        self.update_metrics(save_mask=False)
+        self.update_metrics(save_mask=True)
         
-        self.get_final_metrics()
         self.save_checkpoint()
         self.final_log()
-        self.parent_masks.update_zernike_parent(best_zmodes)
         self.save_plots()
+        self.get_final_metrics()
+        self.parent_masks.update_zernike_parent(best_zmodes)
+        self.parent_masks.update_base_mask(initial_base_mask)
         self.save_path = args0.save_path
 
     def get_coeff_list(self,zmode,coeff):
@@ -454,7 +455,7 @@ class Optimizer:
 ##        spot_coeff = np.argmin(spotmets)
 
         maxcoeff = get_polybest(coeffs,maxmets,np.argmax)
-        spotcoeff = get_polybest(coeffs,spotmets,np.argmin)
+        spotcoeff = get_polybest(coeffs,spotmets,np.argmax)
         best_coeff = int((maxcoeff+spotcoeff)/2)
         
 ##        if isinstance(best_coeff,np.ndarray):
@@ -609,16 +610,17 @@ class Optimizer:
 ####
     
         
-def get_mask_compare_list(directory,names=['bestmask.txt'],write_to_file=True):
+def get_mask_compare_list(directory,names=['bestmask'],write_to_file=True):
         maskfiles = []
         for root, dirs, files in os.walk(directory):
-            for d in dirs:
+            for d in files:
                 f = os.path.join(root,d)
+                if f.find('compare_masks') != -1:
+                    continue
                 for name in names:
-                    mfile = os.path.join(f,name)
-                    if os.path.isfile(mfile):
-                        maskfiles.append(mfile)
-                        print(mfile,'...added to compare list.')
+                    if name in f:
+                        maskfiles.append(f)
+                        print(f,'...added to compare list.')
         if write_to_file:
             with open(os.path.join(directory,'compare_list.txt'),'w+') as f:
                 for m in maskfiles:
