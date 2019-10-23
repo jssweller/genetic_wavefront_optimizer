@@ -33,7 +33,7 @@ Exposure value at -2.'
     args.num_childs = 15
     args.fitness_func = 'max'
     args.masktype = 'zernike'  # 'rect' or 'zernike'
-    args.zmodes = np.arange(3,27)
+    args.zernike_modes = np.arange(3,27)
     args0 = copy.copy(args)
     
     
