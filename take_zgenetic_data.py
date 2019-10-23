@@ -241,6 +241,12 @@ if __name__ == '__main__':
         help='Fitness function to use for ranking masks. OPTIONS: "mean", "max", "spot". DEFAULT="max"'
     )
     parser.add_argument(
+        '--masktype',
+        type=str,
+        default='rect',
+        help='Mask type to use for genetic algoritym. OPTIONS: "rect", "zernike"  DEFAULT= "rect" '
+    )
+    parser.add_argument(
         '--save_path',
         type=str,
         default='oop_test',
@@ -251,6 +257,11 @@ if __name__ == '__main__':
         '--zernike_coeffs', nargs='*', type=int,
         default=[0],
         help='List of zernike coefficients for zernike modes 3-15. DEFAULT="0"'
+    )
+    parser.add_argument(
+        '--zernike_modes', nargs='*', type=int,
+        default=None,
+        help='List of zernike modes to be used for genetic algorithm with zernike masks. DEFAULT=None'
     )
     parser.add_argument(
         '--grating_step', type=int,
