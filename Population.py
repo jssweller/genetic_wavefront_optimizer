@@ -100,13 +100,16 @@ class Population:
         slm_masks = [self.create_full_mask(mask) + self.base_mask + self.zernike_mask + self.grating_mask for mask in self.masks]
         return slm_masks
         
-    def create_mask(self,uniform_bool=None):
+    def create_mask(self,uniform_bool=None, masktype=None):
         if uniform_bool is None:
             uniform_bool = self.uniform
-            
-        if self.masktype == 'rect':
+
+        if masktype == None:
+            masktype = self.masktype
+        
+        if masktype == 'rect':
             newmask = np.zeros((self.segment_rows, self.segment_cols),dtype=np.uint8)
-        if self.masktype == 'zernike':
+        if masktype == 'zernike':
             newmask = np.zeros(len(self.zernike_modes))
             
         if not uniform_bool:
@@ -114,16 +117,19 @@ class Population:
                 newmask[tuple([np.random.randint(0, x) for x in newmask.shape])] = np.random.choice(self.phase_vals)
         return newmask
     
-    def create_full_mask(self,mask):
-        if self.masktype == 'rect':
+    def create_full_mask(self,mask, masktype=None):
+        if masktype is None:
+            masktype = self.masktype
+            
+        if masktype == 'rect':
             if np.shape(mask)[0] == self.slm_height:
                 return mask
             else:
                 segment = np.ones((self.segment_height, self.segment_width),dtype=np.uint8)
                 return np.kron(mask,segment)
             
-        if self.masktype == 'zernike':
-            return self.create_zernike_mask(zcoeffs=mask)
+        if masktype == 'zernike':
+            return self.create_zernike_mask(zcoeffs=mask,zmodes=self.zernike_modes)
             
 ############################################### Begin Zernike ########################################
     
@@ -157,9 +163,9 @@ class Population:
             zcoeffs = self.zernike_coeffs
         if zmodes is None:
             zmodes = np.arange(len(zcoeffs))+3
-        newmask = self.create_full_mask(self.create_mask(True))
+        newmask = self.create_full_mask(self.create_mask(True,masktype='rect'),masktype='rect')
         for i,coefficient in enumerate(zcoeffs):
-            if coefficient != 0 and zmode[i]> 3 and zmode[i]<=26:
+            if coefficient != 0 and zmodes[i]> 3 and zmodes[i]<=26:
                 func = getattr(self.zernike,'z'+str(zmodes[i]))
                 zmask = np.fromfunction(func,(self.slm_height, self.slm_width))
                 zmask *= 4*coefficient/np.max(np.abs(zmask))
