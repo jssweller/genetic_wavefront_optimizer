@@ -22,6 +22,10 @@ class Population:
         self.uniform_childs = args.add_uniform_childs
         self.num_uniform = 2
 
+        # new args
+        self.masktype = args.masktype
+        self.zernike_modes = args.zernike_modes
+
         self.mutate_initial_rate = args.mutate_initial_rate
         self.mutate_final_rate = args.mutate_final_rate
         self.mutate_decay_factor = args.mutate_decay_factor
@@ -31,8 +35,11 @@ class Population:
 
         pstep = 1/sum(np.arange(self.num_masks+1)) # Increment for generating probability distribution.
         self.parent_probability_dist = np.arange(pstep,(self.num_masks+1)*pstep,pstep) # Probability distribution for parent selection.
-        self.phase_vals = np.arange(0,args.num_phase_vals,1,dtype=np.uint8) # Distribution of phase values for SLM
-        
+        if self.masktype == 'rect':
+            self.phase_vals = np.arange(0,args.num_phase_vals,1,dtype=np.uint8) # Distribution of phase values for SLM
+        if self.masktype == 'zernike':
+            self.phase_vals = np.arange(-args.num_phase_vals,args.num_phase_vals,1,dtype=np.uint8)# Dist of zmode coeff values
+
         self.base_mask = base_mask
         self.zernike_mask = 0
         self.grating_mask = 0
@@ -96,18 +103,27 @@ class Population:
     def create_mask(self,uniform_bool=None):
         if uniform_bool is None:
             uniform_bool = self.uniform
-        newmask = np.zeros((self.segment_rows, self.segment_cols),dtype=np.uint8)
-        if uniform_bool == False:
-            for i in range(int(self.segment_rows*self.segment_cols*self.mutate_initial_rate)):
-                newmask[np.random.randint(0, self.segment_rows), np.random.randint(0,self.segment_cols)] = np.random.choice(self.phase_vals)
+            
+        if self.masktype == 'rect':
+            newmask = np.zeros((self.segment_rows, self.segment_cols),dtype=np.uint8)
+        if self.masktype == 'zernike':
+            newmask = np.zeros(len(self.zernike_modes))
+            
+        if not uniform_bool:
+            for i in range(int(newmask.size*self.mutate_initial_rate)):
+                newmask[tuple([np.random.randint(0, x) for x in newmask.shape])] = np.random.choice(self.phase_vals)
         return newmask
     
     def create_full_mask(self,mask):
-        if np.shape(mask)[0] == self.slm_height:
-            return mask
-        else:
-            segment = np.ones((self.segment_height, self.segment_width),dtype=np.uint8)
-            return np.kron(mask,segment)
+        if self.masktype == 'rect':
+            if np.shape(mask)[0] == self.slm_height:
+                return mask
+            else:
+                segment = np.ones((self.segment_height, self.segment_width),dtype=np.uint8)
+                return np.kron(mask,segment)
+            
+        if self.masktype == 'zernike':
+            return self.create_zernike_mask(zcoeffs=mask)
             
 ############################################### Begin Zernike ########################################
     
@@ -136,15 +152,15 @@ class Population:
             self.single_zcoeff = False
         self.masks = [self.create_zernike_mask(zcoeffs)]
     
-    def create_zernike_mask(self,zcoeffs=None):
+    def create_zernike_mask(self,zcoeffs=None, zmodes=None):
         if zcoeffs is None:
             zcoeffs = self.zernike_coeffs
+        if zmodes is None:
+            zmodes = np.arange(len(zcoeffs))+3
         newmask = self.create_full_mask(self.create_mask(True))
         for i,coefficient in enumerate(zcoeffs):
-            if coefficient != 0:
-                #print('mode '+str(i),coefficient)
-                num = i+3
-                func = getattr(self.zernike,'z'+str(num))
+            if coefficient != 0 and zmode[i]> 3 and zmode[i]<=26:
+                func = getattr(self.zernike,'z'+str(zmodes[i]))
                 zmask = np.fromfunction(func,(self.slm_height, self.slm_width))
                 zmask *= 4*coefficient/np.max(np.abs(zmask))
                 newmask += zmask.astype(np.uint8)
@@ -218,7 +234,10 @@ class Population:
         return children
 
     def update_num_mutations(self,gen,numgens):
-        num_segments = int(self.segment_rows*self.segment_cols)
+        if self.masktype == 'rect':
+            num_segments = int(self.segment_rows*self.segment_cols)
+        if self.masktype == 'zernike':
+            num_segments = int(len(self.zernike_modes))
         self.num_mutations = int(round(num_segments * ((self.mutate_initial_rate - self.mutate_final_rate)
                                                     * np.exp(-gen / self.mutate_decay_factor)
                                                     + self.mutate_final_rate)))
@@ -227,16 +246,17 @@ class Population:
     def breed(self):
         """Breed two "parent" masks and return new mutated "child" input mask array."""
         pidx = np.random.choice(len(self.masks),size=2,replace=False,p=self.parent_probability_dist)
-        parents = [np.array(self.masks[pidx[0]],dtype=np.uint8),np.array(self.masks[pidx[1]],dtype=np.uint8)]
+        parents = [np.array(self.masks[p],dtype=np.uint8) for p in pidx]
         if self.uniform_childs:
             uprob = 0.1
             if np.random.choice([True,False],p=[uprob,1-uprob]):
                 parents[0]=self.create_mask(True)
         shape = parents[0].shape
-        rand_matrix = np.random.choice([True,False],size=shape).reshape(shape)
+        rand_matrix = np.random.choice([True,False],size=shape)
         child = parents[0]*rand_matrix+parents[1]*np.invert(rand_matrix)
         for i in range(self.num_mutations):
-            child[np.random.randint(0,shape[0]),np.random.randint(0,shape[1])] = np.random.choice(self.phase_vals)
+            idx = tuple([np.random.randint(0,x) for x in shape])
+            child[idx] = np.random.choice(self.phase_vals)
         return child
 
     def fitness(self, output_field,func=None):
