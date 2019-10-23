@@ -10,50 +10,59 @@ import Optimizer, Interface, Population, textwrap
 
 
 def main(args):
+
+    folders = [r'C:\Users\wellerj\Desktop\waveopt_oop\run_10-18_baseline_slm_newsetup'
+               ]
     
-    runid = '_compareall'
-    run_description = 'Comparing performance of all masks in folder.'
-    
-    ### PARAMS ####
     start_time = [0,0,0] # [hour,minute,add days]
-    run_time = [3,0,0] # [hours,minutes,seconds]
-    numframes = 1
-    zeromask = True
+    run_time = [4,0,0] # [hours,minutes,seconds]
 
-    folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_10-9_baseline_slm'
+    interface = Interface.Interface(args)
     
-    if not os.path.isfile(folder+'/compare_list.txt'):
-        maskfiles = Optimizer.get_mask_compare_list(folder)
-    else:
-        f = open(folder+'/compare_list.txt')
-        maskfiles = [x.strip() for x in f]
-        f.close()
-
-    for x in maskfiles:
-        print(x)
-    interface = Interface.Interface(args)    
-    zopt = Optimizer.Optimizer(args,interface)
-
-##    folder = r'C:\Users\wellerj\Desktop\waveopt_oop\run_8_23-28_compare\zopt_best_8_28'
-##    for root,dirs,files in os.walk(folder):
-##        for file in files:
-##            if file.find('zmodes') == -1:
-##                continue
-##            zopt.save_zernike_mask(os.path.join(root,file))
-            
-    
-    zopt.run_compare_masks(start_time,
-                          run_time,
-                          numframes,
-                          folder,
-                          maskfiles,
-                          runid,
-                          run_description,
-                          zeromask,
-                          cmasks=None,
-                          mask_labels=None)
+    def compare(folder, start_time, run_time, interface):
+        runid = '_compareall'
+        run_description = 'Comparing performance of all masks in folder.'
         
-            
+        ### PARAMS ####
+        numframes = 1
+        zeromask = True
+
+        zopt = Optimizer.Optimizer(args,interface)
+
+        # update zernike bestmask.txt for all zopt folders in dir.
+        for root,dirs,files in os.walk(folder):
+            zdirs = [os.path.join(root,d) for d in dirs if 'compare' not in d and 'zopt' in d]
+            for zd in zdirs:
+                zd+= '/optimized_zmodes.txt'
+                if os.path.isfile(zd):
+                    zopt.save_zernike_mask(zd)
+                    print('UPDATED bestmask.txt: ', zd)
+
+        # create or open compare_list.txt
+        if not os.path.isfile(folder+'/compare_list.txt'):
+            maskfiles = Optimizer.get_mask_compare_list(folder)
+        else:
+            f = open(folder+'/compare_list.txt')
+            maskfiles = [x.strip() for x in f]
+            f.close()
+        for x in maskfiles:
+            print(x)          
+        
+        zopt.run_compare_masks(start_time,
+                              run_time,
+                              numframes,
+                              folder,
+                              maskfiles,
+                              runid,
+                              run_description,
+                              zeromask,
+                              cmasks=None,
+                              mask_labels=None)
+        
+
+    for folder in folders:
+        compare(folder, start_time, run_time, interface)
+        
 if __name__ == '__main__':
     if len(sys.argv)==2 and sys.argv[1]=='--help':
         print(__doc__)
