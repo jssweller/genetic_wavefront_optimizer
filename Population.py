@@ -43,11 +43,10 @@ class Population:
         self.base_mask = base_mask
         self.zernike_mask = 0
         self.grating_mask = 0
-        
+        self.zbasis = None
         self.init_masks()
         self.init_zernike_mask()
         self.init_grating_mask()
-        self.init_zbasis()
         self.fitness_vals = []
         self.output_fields = []
         
@@ -141,6 +140,7 @@ class Population:
 
     def init_zbasis(self):
         '''Initialize set of zernike basis functions for fast calculation of new zernike masks.'''
+        print('Initializing zernike basis functions...')
         zmodes = np.arange(3,27)
         self.zbasis = {str(x):0 for x in zmodes}
         for i, z in enumerate(zmodes):
@@ -148,7 +148,8 @@ class Population:
             zcoeffs[i] = 1
             zfunc = self.create_zernike_mask(zcoeffs, dtype=np.float32, zbasis=False)
             if np.max(np.abs(zfunc)) > 0:
-                self.zbasis[z] = zfunc
+                self.zbasis[str(z)] = zfunc
+        print()
     
     def change_parent_zcoeff(self,newcoeff):
         '''Rescale zernike base mask if only single nonzero coefficient.'''
@@ -179,6 +180,8 @@ class Population:
         for i,coefficient in enumerate(zcoeffs):
             if coefficient != 0 and zmodes[i]>= 3 and zmodes[i]<=26:
                 if zbasis:
+                    if self.zbasis is None:
+                        self.init_zbasis()
                     newmask += coefficient*self.zbasis[str(zmodes[i])]
                 else:
                     func = getattr(self.zernike,'z'+str(zmodes[i]))
@@ -246,6 +249,7 @@ class Population:
         child_args.num_masks = self.num_childs
         child_args.zernike_coeffs = self.zernike_coeffs
         children = Population(child_args,self.base_mask)
+        children.zbasis = self.zbasis
         new_masks = [self.breed() for i in range(self.num_childs)]
         if add_uniform:
             for i in range(self.num_uniform):
