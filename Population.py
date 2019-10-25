@@ -47,6 +47,7 @@ class Population:
         self.init_masks()
         self.init_zernike_mask()
         self.init_grating_mask()
+        self.init_zbasis()
         self.fitness_vals = []
         self.output_fields = []
         
@@ -134,20 +135,31 @@ class Population:
 ############################################### Begin Zernike ########################################
     
     def init_zernike_mask(self):
+        '''Initialize zernike base mask.'''
         self.zernike = Zernike(self)
         self.zernike_mask = self.create_zernike_mask()
-##        plt.imshow(self.zernike_mask)
-##        plt.colorbar()
-##        plt.show()
+
+    def init_zbasis(self):
+        '''Initialize set of zernike basis functions for fast calculation of new zernike masks.'''
+        zmodes = np.arange(3,27)
+        self.zbasis = {str(x):0 for x in zmodes}
+        for i, z in enumerate(zmodes):
+            zcoeffs = (zmodes*0)
+            zcoeffs[i] = 1
+            zfunc = self.create_zernike_mask(zcoeffs, dtype=np.float32, zbasis=False)
+            if np.max(np.abs(zfunc)) > 0:
+                self.zbasis[z] = zfunc
     
     def change_parent_zcoeff(self,newcoeff):
+        '''Rescale zernike base mask if only single nonzero coefficient.'''
         if self.single_zcoeff == True:
-            self.masks = [(mask/self.single_zcoeff_val*newcoeff).astype(np.uint8) for mask in self.masks]
-            self.single_zcoeff_val=newcoeff
+            self.masks = [(mask.astype(np.float32)/self.single_zcoeff_val*newcoeff).astype(np.uint8) for mask in self.masks]
+            self.single_zcoeff_val = newcoeff
         else:
             print('Warning: zernike mask has more than one coefficient. Cannot rescale!')
         
     def update_zernike_parent(self,zcoeffs=None):
+        ''' '''
         if zcoeffs is None:
             zcoeffs = self.zernike_coeffs
         zcoeffs=np.array(zcoeffs,dtype=np.int)
@@ -158,19 +170,22 @@ class Population:
             self.single_zcoeff = False
         self.masks = [self.create_zernike_mask(zcoeffs)]
     
-    def create_zernike_mask(self,zcoeffs=None, zmodes=None):
+    def create_zernike_mask(self, zcoeffs=None, zmodes=None, dtype=np.uint8, zbasis=True):
         if zcoeffs is None:
             zcoeffs = self.zernike_coeffs
         if zmodes is None:
             zmodes = np.arange(len(zcoeffs))+3
-        newmask = self.create_full_mask(self.create_mask(True,masktype='rect'),masktype='rect')
+        newmask = self.create_full_mask(self.create_mask(True,masktype='rect'),masktype='rect').astype(np.float32)
         for i,coefficient in enumerate(zcoeffs):
-            if coefficient != 0 and zmodes[i]> 3 and zmodes[i]<=26:
-                func = getattr(self.zernike,'z'+str(zmodes[i]))
-                zmask = np.fromfunction(func,(self.slm_height, self.slm_width))
-                zmask *= 4*coefficient/np.max(np.abs(zmask))
-                newmask += zmask.astype(np.uint8)
-        return np.array(newmask,dtype=np.uint8)
+            if coefficient != 0 and zmodes[i]>= 3 and zmodes[i]<=26:
+                if zbasis:
+                    newmask += coefficient*self.zbasis[str(zmodes[i])]
+                else:
+                    func = getattr(self.zernike,'z'+str(zmodes[i]))
+                    zmask = np.fromfunction(func,(self.slm_height, self.slm_width),dtype=np.float32)
+                    zmask *= 4*coefficient/np.max(np.abs(zmask))
+                    newmask += zmask
+        return np.array(newmask,dtype=dtype)
 
 ####################################### End Zernike #######################################################################
 
