@@ -38,7 +38,7 @@ class Population:
         if self.masktype == 'rect':
             self.phase_vals = np.arange(0,args.num_phase_vals,1,dtype=np.uint8) # Distribution of phase values for SLM
         if self.masktype == 'zernike':
-            self.phase_vals = np.arange(-args.num_phase_vals,args.num_phase_vals,1,dtype=np.uint8)# Dist of zmode coeff values
+            self.phase_vals = np.arange(-args.num_phase_vals,args.num_phase_vals,1)# Dist of zmode coeff values
 
         self.base_mask = base_mask
         self.zernike_mask = 0
