@@ -148,13 +148,16 @@ class Optimizer:
             population = Population.Population(self.args,base_mask=self.base_mask,uniform=True)
         if save_path != None:
             self.save_path = save_path
-        for field in rois:
-            self.metrics['spot'].append(population.fitness(field,'spot'))
-            self.metrics['maxint'].append(np.max(field))
-            self.metrics['maxmet'].append(population.fitness(field,'max'))
-            self.metrics['mean'].append(population.fitness(field,'mean'))
-            self.metrics['roi'].append(field)
-        self.save_checkpoint(append)
+
+        if len(rois) > 0:
+            for field in rois:
+                self.metrics['spot'].append(population.fitness(field,'spot'))
+                self.metrics['maxint'].append(np.max(field))
+                self.metrics['maxmet'].append(population.fitness(field,'max'))
+                self.metrics['mean'].append(population.fitness(field,'mean'))
+                self.metrics['roi'].append(field)
+            self.save_checkpoint(append)
+        self.load_checkpoint()
         self.save_plots()
 
         if logfile == None:
@@ -276,14 +279,15 @@ class Optimizer:
                 file = open(folder+'/averages.txt',mode)
                 file.write('\n\n'+label+' averaged: \n')
                 self.save_rois_metrics(rois[num], save_path=fdir, logfile=file, append=True)
-                np.savetxt(fdir+'/baseline_times.txt', np.asarray(times[num],dtype='datetime64[s]'), fmt='%s')
+                tfile = open(fdir+'/baseline_times.txt', 'a')
+                np.savetxt(tfile, np.asarray(times[num],dtype='datetime64[s]'), fmt='%s')
                 rois[num]=[]
                 times[num]=[]
             
         for i,label in enumerate(labels):
             fdir = folder+'/'+label
             os.makedirs(fdir,exist_ok=True)
-
+                     
             mode = 'w+'
             if os.path.isfile(folder+'/averages.txt') and i>0:
                 mode = 'a'
@@ -292,7 +296,8 @@ class Optimizer:
             self.save_rois_metrics(rois[i], save_path=fdir, logfile=file, append=True)
             tfile = open(fdir+'/baseline_times.txt', 'a')
             np.savetxt(tfile, np.asarray(times[i],dtype='datetime64[s]'), fmt='%s')
-            tfile.close()
+            tfile.close()       
+        
 
     def run_compare_all_in_folder(self,folder,run_time):
         ### PARAMS ####
@@ -414,7 +419,8 @@ class Optimizer:
                 base_mask += self.parent_masks.create_zernike_mask(self.get_coeff_list(zmode,best_coeff))
             self.parent_masks.update_base_mask(base_mask)
             best_zmodes += self.get_coeff_list(zmode,best_coeff)
-        
+
+        os.makedirs(self.save_path,exist_ok=True)
         np.savetxt(self.save_path+'/optimized_zmodes.txt',best_zmodes, fmt='%d')
         self.parent_masks.update_zernike_parent(best_zmodes)
         self.parent_masks.update_base_mask(initial_base_mask)
@@ -535,26 +541,48 @@ class Optimizer:
 
         for x in f:
             x.close()
+
+    def load_checkpoint(self, fdir=None, load_roi=False, load_masks=False):
+        fdict = {'spot':'/spot_metric_vals_checkpoint.txt',
+                 'maxmet':'/max_metric_vals_checkpoint.txt',
+                 'mean':'/mean_intensity_vals_checkpoint.txt',
+                 'maxint':'/max_intensity_vals_checkpoint.txt',
+                 'roi':'/roi.txt',
+                 'masks':'/masks.txt'}
         
-    def save_plots(self):
+        if fdir is None:
+            fdir = self.save_path
+        
+        for met in fdict.keys():
+            if (met == 'roi' and not load_roi) or (met == 'masks' and not load_masks):
+                continue
+            self.metrics[met] = np.loadtxt(self.save_path + fdict[met])
+            
+    
+    def save_plots(self, fromfile=False, fdir=None):
+        if fromfile is True:
+            self.load_checkpoint()
+        if fdir is None:
+            fdir = self.save_path
+            
         plt.figure()
         plt.plot(self.metrics['maxmet'])
-        plt.savefig(self.save_path+'/max_metric_plot')
+        plt.savefig(fdir+'/max_metric_plot')
         plt.close()
 
         plt.figure()
         plt.plot(self.metrics['maxint'])
-        plt.savefig(self.save_path+'/max_intensity_plot')
+        plt.savefig(fdir+'/max_intensity_plot')
         plt.close()
 
         plt.figure()
         plt.plot(self.metrics['mean'])
-        plt.savefig(self.save_path+'/mean_intensity_plot')
+        plt.savefig(fdir+'/mean_intensity_plot')
         plt.close()
 
         plt.figure()
         plt.plot(1/np.asarray(self.metrics['spot']))
-        plt.savefig(self.save_path+'/spot_metric_plot')
+        plt.savefig(fdir+'/spot_metric_plot')
         plt.close()
 
         dim=int(np.sqrt(len(self.metrics['roi'][0])))
@@ -563,7 +591,7 @@ class Optimizer:
         plt.xticks([])
         plt.yticks([])
         plt.colorbar()
-        plt.savefig(self.save_path+'/end_roi')
+        plt.savefig(fdir+'/end_roi')
         plt.close()
 
         dim=int(np.sqrt(len(self.metrics['roi'][0])))
@@ -572,7 +600,7 @@ class Optimizer:
         plt.xticks([])
         plt.yticks([])
         plt.colorbar()
-        plt.savefig(self.save_path+'/end_roi_averaged')
+        plt.savefig(fdir+'/end_roi_averaged')
         plt.close()
 
         plt.figure()
@@ -580,7 +608,7 @@ class Optimizer:
         plt.xticks([])
         plt.yticks([])
         plt.colorbar()
-        plt.savefig(self.save_path+'/begin_roi')
+        plt.savefig(fdir+'/begin_roi')
         plt.close()
         
         plt.figure()
@@ -588,7 +616,7 @@ class Optimizer:
         plt.xticks([])
         plt.yticks([])
         plt.colorbar()
-        plt.savefig(self.save_path+'/begin_roi_averaged')
+        plt.savefig(fdir+'/begin_roi_averaged')
         plt.close()
 
         plt.figure(figsize=(12,8))
@@ -597,7 +625,7 @@ class Optimizer:
         plt.xticks([])
         plt.yticks([])
         plt.colorbar()
-        plt.savefig(self.save_path+'/final_mask')
+        plt.savefig(fdir+'/final_mask')
         plt.close()
 
     def save_zernike_mask(self, zmodes_file):
