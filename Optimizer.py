@@ -542,7 +542,7 @@ class Optimizer:
         for x in f:
             x.close()
 
-    def load_checkpoint(self, fdir=None, load_roi=False, load_masks=False):
+    def load_checkpoint(self, fdir=None, load_roi=True, load_masks=True):
         fdict = {'spot':'/spot_metric_vals_checkpoint.txt',
                  'maxmet':'/max_metric_vals_checkpoint.txt',
                  'mean':'/mean_intensity_vals_checkpoint.txt',
@@ -620,7 +620,7 @@ class Optimizer:
         plt.close()
 
         plt.figure(figsize=(12,8))
-        bmask = self.parent_masks.get_slm_masks()[-1]
+        bmask = np.array(self.parent_masks.get_slm_masks()[-1],dtype=np.uint8)
         plt.imshow(bmask, cmap='Greys')
         plt.xticks([])
         plt.yticks([])
