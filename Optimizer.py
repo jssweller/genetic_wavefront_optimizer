@@ -176,7 +176,8 @@ class Optimizer:
                 file.write('\n'+key+': '+str(m))
         file.write('\n\n')
         file.close()
-                       
+
+        self.init_metrics()                       
         self.save_path = self.args.save_path
     
 
@@ -550,13 +551,20 @@ class Optimizer:
                  'roi':'/roi.txt',
                  'masks':'/masks.txt'}
         
+        dtype = {'spot':np.float,
+                 'maxmet': np.float,
+                 'mean': np.float' ,
+                 'maxint': np.uint8,
+                 'roi': np.uint8,
+                 'masks': np.uint8}
+        
         if fdir is None:
             fdir = self.save_path
         
         for met in fdict.keys():
             if (met == 'roi' and not load_roi) or (met == 'masks' and not load_masks):
                 continue
-            self.metrics[met] = np.loadtxt(self.save_path + fdict[met])
+            self.metrics[met] = np.loadtxt(self.save_path + fdict[met], dtype=dtype[met])
             
     
     def save_plots(self, fromfile=False, fdir=None):
@@ -621,7 +629,7 @@ class Optimizer:
 
         plt.figure(figsize=(12,8))
         bmask = np.array(self.parent_masks.get_slm_masks()[-1],dtype=np.uint8)
-        plt.imshow(bmask, cmap='Greys')
+        plt.imshow(bmask, cmap='Greys_r')
         plt.xticks([])
         plt.yticks([])
         plt.colorbar()
