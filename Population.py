@@ -171,7 +171,7 @@ class Population:
             self.single_zcoeff = False
         self.masks = [self.create_zernike_mask(zcoeffs)]
     
-    def create_zernike_mask(self, zcoeffs=None, zmodes=None, dtype=np.uint8, zbasis=True):
+    def create_zernike_mask(self, zcoeffs=None, zmodes=None, dtype=np.uint8, zbasis=False):
         if zcoeffs is None:
             zcoeffs = self.zernike_coeffs
         if zmodes is None:
