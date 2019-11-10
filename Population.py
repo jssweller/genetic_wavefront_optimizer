@@ -21,6 +21,7 @@ class Population:
         self.uniform = uniform
         self.uniform_childs = args.add_uniform_childs
         self.num_uniform = 2
+        self.uniform_parent_prob = args.uniform_parent_prob
 
         # new args
         self.masktype = args.masktype
@@ -273,8 +274,7 @@ class Population:
         pidx = np.random.choice(len(self.masks),size=2,replace=False,p=self.parent_probability_dist)
         parents = [np.array(self.masks[p],dtype=np.uint8) for p in pidx]
         if self.uniform_childs:
-            uprob = 0.1
-            if np.random.choice([True,False],p=[uprob,1-uprob]):
+            if np.random.choice([True,False],p=[self.uniform_parent_prob,1 - self.uniform_parent_prob]):
                 parents[0]=self.create_mask(True)
         shape = parents[0].shape
         rand_matrix = np.random.choice([True,False],size=shape)
@@ -345,7 +345,9 @@ class Zernike:
     def __init__(self, population):
         self.x0 = int(population.segment_cols*population.segment_width/2)
         self.y0 = int(population.segment_rows*population.segment_height/2)
-        self.scale = 1/self.y0
+        self.scale = 1/np.sqrt(self.y0**2 + self.x0**2)
+        self.x0 += 0.5
+        self.y0 += 0.5
 
     def z3(self,y,x):
         return -1 + 2*(((x-self.x0)*self.scale)**2+((y-self.y0)*self.scale)**2)
