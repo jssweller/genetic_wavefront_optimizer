@@ -1,7 +1,10 @@
+import matplotlib
+matplotlib.use('Agg') # Added to fix RuntimeError in tkinter when saving plot images
+from matplotlib import pyplot as plt
+
 import numpy as np
 import win32pipe as wp
 import win32file as wf
-import matplotlib.pyplot as plt
 import pyscreenshot as ImageGrab
 import time, datetime, sys, os, argparse, copy, __main__
 import datetime as dt
@@ -553,7 +556,7 @@ class Optimizer:
         
         dtype = {'spot':np.float,
                  'maxmet': np.float,
-                 'mean': np.float' ,
+                 'mean': np.float ,
                  'maxint': np.uint8,
                  'roi': np.uint8,
                  'masks': np.uint8}
