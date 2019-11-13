@@ -346,8 +346,8 @@ class Zernike:
         self.x0 = int(population.segment_cols*population.segment_width/2)
         self.y0 = int(population.segment_rows*population.segment_height/2)
         self.scale = 1/np.sqrt(self.y0**2 + self.x0**2)
-        self.x0 += 0.5
-        self.y0 += 0.5
+        self.x0 -= 0.5
+        self.y0 -= 0.5
 
     def z3(self,y,x):
         return -1 + 2*(((x-self.x0)*self.scale)**2+((y-self.y0)*self.scale)**2)
