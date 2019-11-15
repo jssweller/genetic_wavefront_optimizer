@@ -187,7 +187,8 @@ class Population:
                 else:
                     func = getattr(self.zernike,'z'+str(zmodes[i]))
                     zmask = np.fromfunction(func,(self.slm_height, self.slm_width),dtype=np.float32)
-                    zmask *= 4*coefficient/np.max(np.abs(zmask))
+##                    zmask *= 4*coefficient/np.max(np.abs(zmask))
+                    zmax *= coefficient
                     newmask += zmask
         return np.array(newmask,dtype=dtype)
 
