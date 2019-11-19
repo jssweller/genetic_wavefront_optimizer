@@ -99,7 +99,7 @@ class Population:
         """Return masks to be loaded onto slm."""
 ##        print(type(self.create_full_mask(self.masks[0])),np.shape(self.base_mask), type(self.zernike_mask), type(self.grating_mask))
         slm_masks = [self.create_full_mask(mask) + self.base_mask + self.zernike_mask + self.grating_mask for mask in self.masks]
-        return slm_masks
+        return np.round(slm_masks,0).astype(dtype=np.uint8)
         
     def create_mask(self,uniform_bool=None, masktype=None):
         if uniform_bool is None:
@@ -126,8 +126,8 @@ class Population:
             if np.shape(mask)[0] == self.slm_height:
                 return mask
             else:
-                segment = np.ones((self.segment_height, self.segment_width),dtype=np.uint8)
-                return np.kron(mask,segment)
+                segment = np.ones((self.segment_height, self.segment_width),dtype=np.float32)
+                return np.kron(mask,segment,dtype=np.float32)
             
         if masktype == 'zernike':
             return self.create_zernike_mask(zcoeffs=mask,zmodes=self.zernike_modes)
@@ -172,7 +172,7 @@ class Population:
             self.single_zcoeff = False
         self.masks = [self.create_zernike_mask(zcoeffs)]
     
-    def create_zernike_mask(self, zcoeffs=None, zmodes=None, dtype=np.uint8, zbasis=False):
+    def create_zernike_mask(self, zcoeffs=None, zmodes=None, dtype=np.float32, zbasis=False):
         if zcoeffs is None:
             zcoeffs = self.zernike_coeffs
         if zmodes is None:
@@ -209,8 +209,8 @@ class Population:
             step = self.grating_step
         if step==0:
             return newmask
-        pattern = np.arange(0,int(self.slm_width),1,dtype=np.uint8)*step
-        newmask += np.kron(pattern,np.ones((int(self.slm_height),1),dtype=np.uint8))
+        pattern = np.arange(0,int(self.slm_width),1,dtype=np.float32)*step
+        newmask += np.kron(pattern,np.ones((int(self.slm_height),1),dtype=np.float32))
         return newmask
     
 ####################################### End Grating #######################################################################
@@ -273,7 +273,7 @@ class Population:
     def breed(self):
         """Breed two "parent" masks and return new mutated "child" input mask array."""
         pidx = np.random.choice(len(self.masks),size=2,replace=False,p=self.parent_probability_dist)
-        parents = [np.array(self.masks[p],dtype=np.uint8) for p in pidx]
+        parents = [np.array(self.masks[p],dtype=np.float32) for p in pidx]
         if self.uniform_childs:
             if np.random.choice([True,False],p=[self.uniform_parent_prob,1 - self.uniform_parent_prob]):
                 parents[0]=self.create_mask(True)
