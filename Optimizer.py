@@ -375,6 +375,7 @@ class Optimizer:
             self.run_generation()
             if self.gen % int(numgens/min(4,numgens))==0:
                 self.save_checkpoint()
+                self.save_plots()
             print('Time', round(time.time()-t0,2),'s', end=' ...\t')
             print('Fitness:', round(max(self.parent_masks.get_fitness_vals()),2))
 
@@ -406,7 +407,7 @@ class Optimizer:
                 continue
             print('\nOptimizing Zernike Mode',str(zmode))
             # Course search
-            snum = 10
+            snum = 20
             coeffs = np.arange(coeff_range[0],coeff_range[1]+1,snum)
             best_coeff = self.get_best_coefficient(zmode,coeffs)
             
@@ -423,6 +424,8 @@ class Optimizer:
                 base_mask += self.parent_masks.create_zernike_mask(self.get_coeff_list(zmode,best_coeff))
             self.parent_masks.update_base_mask(base_mask)
             best_zmodes += self.get_coeff_list(zmode,best_coeff)
+            self.save_checkpoint()
+            self.save_plots()
 
         os.makedirs(self.save_path,exist_ok=True)
         np.savetxt(self.save_path+'/optimized_zmodes.txt',best_zmodes, fmt='%d')
@@ -444,7 +447,7 @@ class Optimizer:
         cfs[zmode-3] = coeff
         return cfs
     
-    def get_best_coefficient(self,zmode,coeffs,repeat=30):
+    def get_best_coefficient(self,zmode,coeffs,repeat=15):
         maxmets=[]
         spotmets=[]
         print('coeff',end='')
