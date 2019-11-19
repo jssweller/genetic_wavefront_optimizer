@@ -275,7 +275,10 @@ class Population:
                 parents[0]=self.create_mask(True)
         shape = parents[0].shape
         rand_matrix = np.random.choice([True,False],size=shape)
+        #### ADDING NEW MUTATION PROCEDURE HERE  #############
         child = parents[0]*rand_matrix+parents[1]*np.invert(rand_matrix)
+        mutate_dist = np.arange(0,int(2*self.num_mutations))
+        mutate_probs = np.exp(
         for i in range(self.num_mutations):
             idx = tuple([np.random.randint(0,x) for x in shape])
             child[idx] = np.random.choice(self.phase_vals)
