@@ -261,10 +261,17 @@ class Population:
             num_segments = int(self.segment_rows*self.segment_cols)
         if self.masktype == 'zernike':
             num_segments = int(len(self.zernike_modes))
-        self.num_mutations = int(round(num_segments * ((self.mutate_initial_rate - self.mutate_final_rate)
+        num_mutations = int(round(num_segments * ((self.mutate_initial_rate - self.mutate_final_rate)
                                                     * np.exp(-gen / self.mutate_decay_factor)
                                                     + self.mutate_final_rate)))
-        self.num_mutations = max(1,self.num_mutations)
+        num_mutations = max(1,num_mutations)
+        #### ADDING NEW MUTATION PROCEDURE HERE  #############
+        if gen == 0:
+            self.num_mutations_initial = num_mutations
+            self.mutate_dist = np.arange(0,int(2*self.num_mutations_initial))
+        var = 1
+        self.mutate_probs = np.exp(np.square(self.mutate_dist - num_mutations)/var)
+        self.mutate_probs /= np.sum(self.mutate_probs)
         
     def breed(self):
         """Breed two "parent" masks and return new mutated "child" input mask array."""
@@ -274,11 +281,16 @@ class Population:
             if np.random.choice([True,False],p=[self.uniform_parent_prob,1 - self.uniform_parent_prob]):
                 parents[0]=self.create_mask(True)
         shape = parents[0].shape
-        rand_matrix = np.random.choice([True,False],size=shape)
+
+        # Randomly choose mixing probabilities for parents from beta distribution
+        # with alpha=2 and beta=2 centered at 0.5. 0<p<1
+        p1_prob = np.random.beta(a=2,b=2)
+        p2_prob = 1 - p1_prob
+        
+        rand_matrix = np.random.choice([True,False], p=[p1_prob,p2_prob] ,size=shape)
         #### ADDING NEW MUTATION PROCEDURE HERE  #############
         child = parents[0]*rand_matrix+parents[1]*np.invert(rand_matrix)
-        mutate_dist = np.arange(0,int(2*self.num_mutations))
-        mutate_probs = np.exp(
+        self.num_mutations = np.random.choice(self.mutate_dist, p=self.mutate_probs)
         for i in range(self.num_mutations):
             idx = tuple([np.random.randint(0,x) for x in shape])
             child[idx] = np.random.choice(self.phase_vals)
