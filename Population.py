@@ -269,8 +269,8 @@ class Population:
         if gen == 0:
             self.num_mutations_initial = num_mutations
             self.mutate_dist = np.arange(0,int(2*self.num_mutations_initial))
-        var = 1
-        self.mutate_probs = np.exp(np.square(self.mutate_dist - num_mutations)/var)
+        var = 0.2*self.num_mutations_initial # variance
+        self.mutate_probs = np.exp(np.square(self.mutate_dist - num_mutations)/2*var)
         self.mutate_probs /= np.sum(self.mutate_probs)
         
     def breed(self):
@@ -288,8 +288,10 @@ class Population:
         p2_prob = 1 - p1_prob
         
         rand_matrix = np.random.choice([True,False], p=[p1_prob,p2_prob] ,size=shape)
-        #### ADDING NEW MUTATION PROCEDURE HERE  #############
+        
         child = parents[0]*rand_matrix+parents[1]*np.invert(rand_matrix)
+
+        # choose num_mutations stochastically
         self.num_mutations = np.random.choice(self.mutate_dist, p=self.mutate_probs)
         for i in range(self.num_mutations):
             idx = tuple([np.random.randint(0,x) for x in shape])
