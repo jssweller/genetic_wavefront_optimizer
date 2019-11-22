@@ -251,8 +251,8 @@ class Population:
         new_masks = [self.breed() for i in range(self.num_childs)]
         if add_uniform:
             for i in range(self.num_uniform):
-                new_masks.append(self.create_mask(True))
-##                new_masks.insert(0,self.create_mask(True))
+##                new_masks.append(self.create_mask(True))
+                new_masks.insert(0,self.create_mask(True))
         children.update_masks(new_masks)
         return children
 
@@ -266,11 +266,11 @@ class Population:
                                                     + self.mutate_final_rate)))
         num_mutations = max(1,num_mutations)
         #### ADDING NEW MUTATION PROCEDURE HERE  #############
-        if gen == 0:
-            self.num_mutations_initial = num_mutations
-            self.mutate_dist = np.arange(0,int(2*self.num_mutations_initial))
-        var = 0.2*self.num_mutations_initial # variance
-        self.mutate_probs = np.exp(np.square(self.mutate_dist - num_mutations)/2*var)
+        if gen == 1:
+            self.num_mutations_initial = max(3,num_mutations) # set distribution size with min of 6
+            self.mutate_dist = np.arange(0,int(2*self.num_mutations_initial))+1
+        var = 0.1*self.num_mutations_initial # variance
+        self.mutate_probs = np.exp(-np.square(self.mutate_dist - num_mutations)/2*var)
         self.mutate_probs /= np.sum(self.mutate_probs)
         
     def breed(self):
@@ -293,6 +293,7 @@ class Population:
 
         # choose num_mutations stochastically
         self.num_mutations = np.random.choice(self.mutate_dist, p=self.mutate_probs)
+##        print('p1,p2:', round(p1_prob,2),round(p2_prob,2),'\tnum mutations:',self.num_mutations)
         for i in range(self.num_mutations):
             idx = tuple([np.random.randint(0,x) for x in shape])
             child[idx] = np.random.choice(self.phase_vals)
