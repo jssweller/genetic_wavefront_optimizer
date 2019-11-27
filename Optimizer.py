@@ -243,7 +243,7 @@ class Optimizer:
                     labels.append(mask_labels[j])
                 
 
-        print(labels)
+        print(''.join([x+'\n' for x in labels]))
         if zeromask:
             zero_mask = 0
             labels.append('nomask')
@@ -262,31 +262,31 @@ class Optimizer:
             print('WAITING... Time left before start:', start_time - dt.datetime.now())
             time.sleep(30)
 
-        i=0
+        masknums = np.arange(0,nummasks)
         while end_time > dt.datetime.now():
-            num = i%nummasks
-            print(labels[num], end='...')
-            self.base_mask = masks[num]
-            times[num].append(dt.datetime.now())
-            rois[num].extend(self.get_baseline_intensity(numframes))
-            i += 1
-            print('Time left:',end_time - dt.datetime.now())
-            
-            if len(rois[num]) >= 1000:
-                label = labels[num]
-                fdir = folder+'/'+label
-                os.makedirs(fdir,exist_ok=True)
+            np.random.shuffle(masknums)
+            for num in masknums:
+                print(labels[num], end='...')
+                self.base_mask = masks[num]
+                times[num].append(dt.datetime.now())
+                rois[num].extend(self.get_baseline_intensity(numframes))
+                print('Time left:',end_time - dt.datetime.now())
+                
+                if len(rois[num]) >= 1000:
+                    label = labels[num]
+                    fdir = folder+'/'+label
+                    os.makedirs(fdir,exist_ok=True)
 
-                mode = 'w+'
-                if os.path.isfile(folder+'/averages.txt') and num>0:
-                    mode = 'a'
-                file = open(folder+'/averages.txt',mode)
-                file.write('\n\n'+label+' averaged: \n')
-                self.save_rois_metrics(rois[num], save_path=fdir, logfile=file, append=True)
-                tfile = open(fdir+'/baseline_times.txt', 'a')
-                np.savetxt(tfile, np.asarray(times[num],dtype='datetime64[s]'), fmt='%s')
-                rois[num]=[]
-                times[num]=[]
+                    mode = 'w+'
+                    if os.path.isfile(folder+'/averages.txt') and num>0:
+                        mode = 'a'
+                    file = open(folder+'/averages.txt',mode)
+                    file.write('\n\n'+label+' averaged: \n')
+                    self.save_rois_metrics(rois[num], save_path=fdir, logfile=file, append=True)
+                    tfile = open(fdir+'/baseline_times.txt', 'a')
+                    np.savetxt(tfile, np.asarray(times[num],dtype='datetime64[s]'), fmt='%s')
+                    rois[num]=[]
+                    times[num]=[]
             
         for i,label in enumerate(labels):
             fdir = folder+'/'+label
@@ -308,15 +308,14 @@ class Optimizer:
         runid = '_compareall'
         run_description = 'Comparing performance of all masks in folder.'
         start_time = [0,0,0] # [hour,minute,add days]
-##        run_time = [12,0,0] # [hours,minutes,seconds]
-        numframes = 10
+        numframes = 1
         zeromask = True
         
         if not os.path.isfile(folder+'/compare_list.txt'):
             maskfiles = get_mask_compare_list(folder)
         else:
             maskfiles = np.loadtxt(folder+'/compare_list.txt',dtype=np.str)
-        print([x for x in maskfiles])
+        print(''.join([x+'\n' for x in maskfiles]))
         self.run_compare_masks(start_time,
                           run_time,
                           numframes,
@@ -407,19 +406,16 @@ class Optimizer:
                 continue
             print('\nOptimizing Zernike Mode',str(zmode))
             # Course search
-            snum = 20
+            snum = 40
             coeffs = np.arange(coeff_range[0],coeff_range[1]+1,snum)
-            best_coeff = self.get_best_coefficient(zmode,coeffs)
+            best_coeff = self.get_best_coefficient(zmode,coeffs,'max')
             
             # Fine Search
-            coeffs = np.arange(best_coeff-snum,best_coeff+snum,2)
+            fsnum = 2*snum
+            coeffs = np.arange(best_coeff-fsnum,best_coeff+fsnum,8)
             best_coeff = self.get_best_coefficient(zmode,coeffs)
 
-##            # Repeat Fine
-##            for i in range(1):
-##                coeffs = np.arange(best_coeff-int(snum/2),best_coeff+int(snum/2),2)
-##                best_coeff = int(np.mean([self.get_best_coefficient(zmode,coeffs),best_coeff]))
-            
+        
             if cumulative:
                 base_mask += self.parent_masks.create_zernike_mask(self.get_coeff_list(zmode,best_coeff))
             self.parent_masks.update_base_mask(base_mask)
@@ -447,7 +443,7 @@ class Optimizer:
         cfs[zmode-3] = coeff
         return cfs
     
-    def get_best_coefficient(self,zmode,coeffs,repeat=15):
+    def get_best_coefficient(self,zmode,coeffs, method='poly', repeat=15):
         maxmets=[]
         spotmets=[]
         print('coeff',end='')
@@ -464,12 +460,16 @@ class Optimizer:
             maxmets.append(self.metrics['maxmet'][-1])
             spotmets.append(self.metrics['spot'][-1])
         print('\n')
-##        max_coeff = np.argmax(maxmets)
-##        spot_coeff = np.argmin(spotmets)
 
-        maxcoeff = get_polybest(coeffs,maxmets,np.argmax)
-        spotcoeff = get_polybest(coeffs,spotmets,np.argmax)
-        best_coeff = int((maxcoeff+spotcoeff)/2)
+        if method == 'poly':
+            max_coeff = get_polybest(coeffs,maxmets,np.argmax)
+            spot_coeff = get_polybest(coeffs,spotmets,np.argmax)
+            best_coeff = int((max_coeff+spot_coeff)/2)
+        elif method == 'max':
+            max_coeff = np.argmax(maxmets)
+            spot_coeff = np.argmax(spotmets)
+            best_coeff = coeffs[max_coeff]
+        
         
 ##        if isinstance(best_coeff,np.ndarray):
 ##            best_coeff = best_coeff[-1]
@@ -570,8 +570,11 @@ class Optimizer:
         for met in fdict.keys():
             if (met == 'roi' and not load_roi) or (met == 'masks' and not load_masks):
                 continue
-            self.metrics[met] = np.loadtxt(self.save_path + fdict[met], dtype=dtype[met])
-            
+            if os.path.isfile(self.save_path + fdict[met]):
+                self.metrics[met] = np.loadtxt(self.save_path + fdict[met], dtype=dtype[met])
+            else:
+                print('WARNING: Metric '+met+' not loaded.','\nfile not found:',self.save_path + fdict[met])
+  
     
     def save_plots(self, fromfile=False, fdir=None):
         if fromfile is True:
