@@ -20,7 +20,7 @@ class Population:
         self.fitness_func = args.fitness_func
         self.uniform = uniform
         self.uniform_childs = args.add_uniform_childs
-        self.num_uniform = 2
+        self.num_uniform = 1
         self.uniform_parent_prob = args.uniform_parent_prob
 
         # new args
@@ -256,7 +256,7 @@ class Population:
         if add_uniform:
             for i in range(self.num_uniform):
                 new_masks.append(self.create_mask(True))
-                new_masks.insert(0,self.create_mask(True))
+##                new_masks.insert(0,self.create_mask(True))
         children.update_masks(new_masks)
         return children
 
