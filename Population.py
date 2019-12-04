@@ -139,7 +139,7 @@ class Population:
     def init_zbasis(self):
         '''Initialize set of zernike basis functions for fast calculation of new zernike masks.'''
         print('Initializing zernike basis functions...')
-        zmodes = np.arange(3,27)
+        zmodes = np.arange(3,49)
         self.zbasis = {str(x):0 for x in zmodes}
         for i, z in enumerate(zmodes):
             zcoeffs = (zmodes*0)
@@ -176,7 +176,7 @@ class Population:
             zmodes = np.arange(len(zcoeffs))+3
         newmask = self.create_full_mask(self.create_mask(True,masktype='rect'),masktype='rect').astype(np.float32)
         for i,coefficient in enumerate(zcoeffs):
-            if coefficient != 0 and zmodes[i]>= 3 and zmodes[i]<=26:
+            if coefficient != 0 and zmodes[i]>= 3 and zmodes[i]<=48:
                 if zbasis:
                     if self.zbasis is None:
                         self.init_zbasis()
@@ -184,7 +184,6 @@ class Population:
                 else:
                     func = getattr(self.zernike,'z'+str(zmodes[i]))
                     zmask = np.fromfunction(func,(self.slm_height, self.slm_width),dtype=np.float32)
-##                    zmask *= 4*coefficient/np.max(np.abs(zmask))
                     zmask *= coefficient
                     newmask += zmask
         return np.array(newmask,dtype=dtype)
