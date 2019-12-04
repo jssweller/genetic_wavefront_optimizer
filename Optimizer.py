@@ -160,7 +160,7 @@ class Optimizer:
                 self.metrics['mean'].append(population.fitness(field,'mean'))
                 self.metrics['roi'].append(field)
             self.save_checkpoint(append)
-        self.load_checkpoint()
+        self.load_checkpoint(load_masks=False)
         self.save_plots()
 
         if logfile == None:
