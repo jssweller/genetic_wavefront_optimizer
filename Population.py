@@ -1,5 +1,5 @@
 import numpy as np
-import Zernike
+from Zernike import Zernike
 import sys, os, argparse, copy, math
 
 class Population:
