@@ -9,9 +9,10 @@ import Optimizer, Interface, Population, textwrap
 
 
 def main(args):
-    start_num = '11-13_none_newsetup_upprob'
-    run_description = 'None. Testing uniform parent probability rates on genetic algorithm. \
-No zernike base. Zernike optimization using corrected scaling. \
+    start_num = '11-27_SINGLEplastic_newzernike'
+    run_description = 'Double Plastic scattering material. Testing new corrected zernike vs. Conkey et. al. genetic algorithm \
+with the same mutation rates. \
+Zernike optimization using corrected scaling. \
 zbasis = False. \
 No reference beam. \
 Exposure value at -6.'
@@ -28,7 +29,7 @@ Exposure value at -6.'
     interface = Interface.Interface(args)
 
     args.mutate_initial_rate = 0.02
-    args.mutate_final_rate = 0.001
+    args.mutate_final_rate = 0.005
     args.mutate_decay_factor = 650
 
     args.num_initial_metrics = 50
@@ -42,53 +43,18 @@ Exposure value at -6.'
     modes = np.arange(3,27)
 
 ##    segments = [[64,96],[64,48],[32,48],[32,24]]
-##    segments = [[64,96],[32,48]]
     segments = [[64,96],[32,48]]
-    mutates = np.arange(0.022,0.13,0.02)
-    upprobs = np.insert(np.arange(0.01,0.6,0.1),0,0)
-    print('mutates',mutates)
-    print('upprobs',upprobs)
+    mutates = {'True':0.02,'False':0.04}
     gens = [1500,2000]
-##    gens = [5,5,5]
-
-##    modes = [3]
 
     args = copy.copy(args0)
     args.save_path = folder+'/zopt'
     zopt = Optimizer.Optimizer(args,interface)
 
     ########## zgenetic ################
-##    args = copy.copy(args0)
-##    args.save_path = folder+'/zgenetic'
-##    args.masktype = 'zernike'
-##    args.zernike_modes = np.arange(3,27)
-##    args.mutate_initial_rate = 0.3
-##    args.mutate_final_rate = 0.001
-##    args.num_childs = 40
-##    args.gens = 1500
-##    args.num_phase_vals = 100
-##    gopt = Optimizer.Optimizer(args,interface,base_mask=0)
-##    gopt.run_genetic()
-##
-##    args.masktype = 'rect'
-##    args = copy.copy(args0)
-
-   
-##    zmodes = np.arange(3,27)
-##    args.save_path = folder+'/zopt_mode_'+str(mode)
-##    if os.path.isfile(args.save_path+'/optimized_zmodes.txt'):
-##        opt_zmodes = np.loadtxt(args.save_path+'/optimized_zmodes.txt')
-##        print(opt_zmodes)
-##        zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
-##        print(zopt_mask.shape)
-##    else:
-##        zopt.run_zernike(zmodes,[-200,200])
-##        zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
-
        
 ##    zopt_mask = 0
-    modes = np.arange(0,1)
-    x = 0
+    modes = np.arange(0,4)
     for coeff in coeffs:
         for mode in modes:
             zmodes = np.arange(3,27)
@@ -100,54 +66,50 @@ Exposure value at -6.'
                 zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
                 print(zopt_mask.shape)
             else:
-                zopt.run_zernike(zmodes,[-200,200])
+                zopt.run_zernike(zmodes,[-600,600])
                 zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
 ##                zopt_mask = 0
-##            for mutate in mutates:
-            for mutate in mutates:
-                for s, segment in enumerate(segments):
-                    for zbase in [False]:
-                        clist = np.zeros(13)
-                        clist[mode-3]=coeff
-                        args = copy.copy(args0)
-                        args.zernike_coeffs = clist.tolist()
+            for s, segment in enumerate(segments):
+                for zbase in [True,False]:
+                    clist = np.zeros(13)
+                    clist[mode-3]=coeff
+                    args = copy.copy(args0)
+                    args.zernike_coeffs = clist.tolist()
 
-                        args.segment_width = segment[0]
-                        args.segment_height = segment[1]
-                        args.gens = gens[s]
-                        args.mutate_initial_rate = mutate
+                    args.segment_width = segment[0]
+                    args.segment_height = segment[1]
+                    args.gens = gens[s]
+                    args.mutate_initial_rate = mutates[str(zbase)]
 
-                        measure = True        
-                        args.measure_all = measure
-                        args.add_uniform_childs = not measure
-                        args.uniform_parent_prob = 0
+                    args.measure_all = True
+                    args.add_uniform_childs = True
+                    args.uniform_parent_prob = 0
 
-                        
-                        segment_save = '/'+str(args.segment_height)+'_'+str(args.segment_width)
-                        args.save_path = folder+'/mode_'+str(mode)+'_coeff_'+str(coeff) + segment_save + '_zbase_'+str(zbase) + '_mutate'+str(mutate)
+                    
+                    segment_save = '/'+str(args.segment_height)+'_'+str(args.segment_width)
+                    args.save_path = folder+'/mode_'+str(mode)+'_coeff_'+str(coeff) + segment_save + '_zbase_'+str(zbase)
 
-                        if x==0 and args.segment_height == 48:
-                            args.save_path = r'C:\Users\wellerj\Desktop\waveopt_oop\run_11-6_none_newsetup_mutate1\mode_0_coeff_0' + segment_save + '_zbase_'+str(zbase) + '_mutate_'+str(mutates[-1])
-                            args.mutate_initial_rate = mutates[-1]
-                            args.uniform_parent_prob = 0.1
-                            gopt = Optimizer.Optimizer(args,interface,base_mask=0)
-                            gopt.run_genetic()
-                            args.mutate_initial_rate = args0.mutate_initial_rate
-                            args.save_path = args0.save_path
-                            args.uniform_parent_prob = 0
-                            x=1
-                        
-                        if zbase:
-                            gopt = Optimizer.Optimizer(args,interface,base_mask=zopt_mask)
-                        else:
-                            gopt = Optimizer.Optimizer(args,interface,base_mask=0)
+                    
+                    if zbase:
+                        gopt = Optimizer.Optimizer(args,interface,base_mask=zopt_mask)
+                    else:
+                        gopt = Optimizer.Optimizer(args,interface,base_mask=0)
+                    gopt.run_genetic()
+    
+                    # Test Conkey et al. genetic algorithm (no uniform child)
+                    if zbase:
+                        args.add_uniform_childs = False
+                        args.save_path += '_conkey'
+                        gopt = Optimizer.Optimizer(args,interface,base_mask=zopt_mask)
                         gopt.run_genetic()
-                        print('\n\nDONE with genetic optimization............\n\n')
+                        
+                        
+                    print('\n\nDONE with genetic optimization............\n\n')
 
             print('\n\nDONE with zernike optimization............\n\n')
     
     # compare masks in folder
-    gopt.run_compare_all_in_folder(folder,run_time=[6,0,0])
+    gopt.run_compare_all_in_folder(folder,run_time=[4,0,0])
                 
 if __name__ == '__main__':
     if len(sys.argv)==2 and sys.argv[1]=='--help':
