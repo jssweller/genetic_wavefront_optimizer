@@ -438,12 +438,66 @@ class Optimizer:
         self.parent_masks.update_base_mask(initial_base_mask)
         self.save_path = args0.save_path
 
+    def get_zernike_data(self, zmodes, coeff_range, cumulative=True):
+        '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
+        print('Zernike optimizer running...')
+        best_zmodes = np.zeros(48)
+        self.args.zernike_coeffs = [0]
+        self.init_metrics()
+        args0 = copy.copy(self.args)
+        args0.num_masks=1
+##        args0.zernike_coeffs=[0]
+        args0.fitness_func = 'max'
+##        self.save_path=self.save_path+'/zernike'
+        initial_base_mask = copy.copy(self.base_mask)
+        base_mask = copy.copy(self.base_mask)
+        self.parent_masks = Population.Population(args0,base_mask)
+        self.get_initial_metrics(save_mask=False)
+        self.initial_zernike_log(zmodes,coeff_range)
+        
+        for zmode in zmodes:
+            if zmode<3 or zmode>=49:
+                print('Warning: Zernike mode number out of range(ignored). Number: '+str(zmode))
+                continue
+            print('\nOptimizing Zernike Mode',str(zmode))
+            self.init_metrics()
+            self.save_path = os.path.join(args0.save_path,'mode_1')
+            os.makedirs(self.save_path,exist_ok=True)
+            
+            # Course search
+            snum = 1
+            coeffs = np.arange(coeff_range[0],coeff_range[1]+1,snum)
+            best_coeff = self.get_best_coefficient(zmode, coeffs, 'max', record_all_data=True)
+        
+            if cumulative:
+                base_mask += self.parent_masks.create_zernike_mask(self.get_coeff_list(zmode,best_coeff))
+            self.parent_masks.update_base_mask(base_mask)
+            best_zmodes += self.get_coeff_list(zmode,best_coeff,)
+            self.save_checkpoint()
+            self.save_plots()
+
+        self.save_path = args0.save_path
+        os.makedirs(self.save_path,exist_ok=True)
+        np.savetxt(self.save_path+'/optimized_zmodes.txt',best_zmodes, fmt='%d')
+##        self.parent_masks.update_zernike_parent(best_zmodes)
+##        self.parent_masks.update_base_mask(initial_base_mask)
+##        self.interface.get_output_fields(self.parent_masks)
+##        self.update_metrics(save_mask=True)
+        
+##        self.save_checkpoint()
+##        self.final_log()
+##        self.save_plots()
+##        self.get_final_metrics()
+##        self.parent_masks.update_zernike_parent(best_zmodes)
+##        self.parent_masks.update_base_mask(initial_base_mask)
+        self.save_path = args0.save_path
+    
     def get_coeff_list(self,zmode,coeff):
         cfs = np.zeros(48)
         cfs[zmode-3] = coeff
         return cfs
     
-    def get_best_coefficient(self,zmode,coeffs, method='poly', repeat=15):
+    def get_best_coefficient(self,zmode,coeffs, method='poly', repeat=30, record_all_data=False):
         maxmets=[]
         spotmets=[]
         print('coeff',end='')
@@ -454,9 +508,14 @@ class Optimizer:
 ##                self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
 ##            else:
 ##                self.parent_masks.change_parent_zcoeff(coeff)
-            self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
-            self.interface.get_output_fields(self.parent_masks,repeat)
-            self.update_metrics(update_type='initial',save_mask=False)
+##            self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
+            if record_all_data:
+                for i in range(repeat):
+                    self.interface.get_output_fields(self.parent_masks)
+                    self.update_metrics(update_type='initial',save_mask=False)
+            else:
+                self.interface.get_output_fields(self.parent_masks,repeat)
+                self.update_metrics(update_type='initial',save_mask=False)
             maxmets.append(self.metrics['maxmet'][-1])
             spotmets.append(self.metrics['spot'][-1])
         print('\n')
@@ -475,7 +534,8 @@ class Optimizer:
 ##            best_coeff = best_coeff[-1]
 ##        return coeffs[best_coeff]
         return best_coeff
- 
+
+    
     def initial_log(self):
         os.makedirs(self.save_path, exist_ok=True)
         file = open(self.save_path+'/log.txt','w+')
