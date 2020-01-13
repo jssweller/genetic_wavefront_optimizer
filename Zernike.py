@@ -65,7 +65,7 @@ class Zernike:
 		return 4*((x-self.x0)*self.scale)**3*((y-self.y0)*self.scale) - 4*((x-self.x0)*self.scale)*((y-self.y0)*self.scale)**3
 
 	def z18(self,y,x):
-		return -4*((x-self.x0)*self.scale)**3 + 12*((x-self.x0)*self.scale)*((y-self.y0)*self.scale)**2 + 5*((x-self.x0)*self.scale)**3*(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2) - 15*((x-self.x0)*self.scale)*((y-self.y0)*self.scale)**2*(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)
+		return -4*((x-self.x0)*self.scale)**3 + 12*((x-self.x0)*self.scale) * ((y-self.y0)*self.scale)**2 + 5*((x-self.x0)*self.scale)**3*(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2) - 15*((x-self.x0)*self.scale)*((y-self.y0)*self.scale)**2*(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)
 
 	def z19(self,y,x):
 		return -12*((x-self.x0)*self.scale)**2*((y-self.y0)*self.scale) + 4*((y-self.y0)*self.scale)**3 + 15*((x-self.x0)*self.scale)**2*((y-self.y0)*self.scale) * (((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2) - 5*((y-self.y0)*self.scale)**3*(((x-self.x0)*self.scale)**2 + ((y-self.y0)*self.scale)**2)
