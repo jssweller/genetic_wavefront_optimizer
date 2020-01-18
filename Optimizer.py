@@ -438,7 +438,7 @@ class Optimizer:
         self.parent_masks.update_base_mask(initial_base_mask)
         self.save_path = args0.save_path
 
-    def get_zernike_data(self, zmodes, coeff_range, repeat=10, cumulative=True):
+    def map_zspace(self, zmodes, coeff_range, repeat=10, cumulative=True):
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
         print('Zernike optimizer running...')
         best_zmodes = np.zeros(48)
