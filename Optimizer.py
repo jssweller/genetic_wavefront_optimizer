@@ -452,7 +452,7 @@ class Optimizer:
         initial_base_mask = copy.copy(self.base_mask)
         base_mask = copy.copy(self.base_mask)
         self.parent_masks = Population.Population(args0,base_mask)
-        self.get_initial_metrics(save_mask=False)
+##        self.get_initial_metrics(save_mask=False)
         self.initial_zernike_log(zmodes,coeff_range)
         
         for zmode in zmodes:
@@ -493,11 +493,52 @@ class Optimizer:
 ##        self.parent_masks.update_zernike_parent(best_zmodes)
 ##        self.parent_masks.update_base_mask(initial_base_mask)
         self.save_path = args0.save_path
+
+
+    def record_DLdata(self, zmodes, coeff_range, num_data, batch_size=1000):
+        '''Randomly loads zernike aberrations to SLM and records coefficient vector and ROI'''
+        print('Recording Deep Learning data...')
+        zlist = []
+        self.init_metrics()
+        args.zernike_coeffs=[0]
+        args0 = copy.copy(self.args)
+        args0.num_masks=1
+        self.parent_masks = Population.Population(args0,self.base_mask)
+        self.initial_zernike_log(zmodes,coeff_range)
+
+        zmodes = np.arange(max(3,min(zmodes)),min(49,max(zmodes)))
+        coeff_range = np.arange(coeff_range[0],coeff_range[1]+1)
+        for i in range(num_data+1):
+            coeffs = np.random.choice(coeff_range, zmodes.shape, replace=True)
+            
+            self.init_metrics()
+            os.makedirs(self.save_path,exist_ok=True)
+            zlist.append(coeffs)
+            
+            self.parent_masks.update_zernike_parent(self.get_coeff_list(zmodes,coeffs))
+            self.interface.get_output_fields(self.parent_masks)
+            self.update_metrics(update_type='initial',save_mask=False)
+
+            if (i+1)%batch_size==0 or (i+1)==num_data:
+                savenum = i+1
+                self.save_path = os.path.join(args0.save_path,'data'+str(savenum))
+                os.makedirs(self.save_path,exist_ok=True)
+                self.save_checkpoint(append=True, roi_only=True)
+                zfile = open(os.path.join(self.save_path,'zcoeffs.txt'), 'a')
+                np.savetxt(zfile, zlist, fmt='%d')
+                zfile.close()
+                self.init_metrics()
+                zlist = []
+                
     
-    def get_coeff_list(self,zmode,coeff):
+    def get_coeff_list(self,zmodes,coeffs):
+        if not isinstance(zmodes,(list,np.ndarray)):
+            zmodes, coeffs = [zmodes], [coeffs]
         cfs = np.zeros(48)
-        cfs[zmode-3] = coeff
+        for i, zmode in enumerate(zmodes):
+            cfs[zmode-3] = coeffs[i]
         return cfs
+
     
     def get_best_coefficient(self,zmode,coeffs, method='poly', repeat=10, record_all_data=False):
         maxmets=[]
@@ -570,7 +611,6 @@ class Optimizer:
             
         file.write('\n\n#### Metrics ####:\n\n')    
         file.write('Initial metrics time: '+str(self.get_time())+'\n')
-        file.write('Initial Avg Intensity: '+str(self.metrics['mean'][0])+'\n')
         file.close()
     
     def final_log(self):
@@ -583,7 +623,7 @@ class Optimizer:
         file.close()
         
         
-    def save_checkpoint(self, append=False):
+    def save_checkpoint(self, append=False, roi_only=False):
         files = ['/spot_metric_vals_checkpoint.txt',
                  '/max_metric_vals_checkpoint.txt',
                  '/mean_intensity_vals_checkpoint.txt',
@@ -595,18 +635,23 @@ class Optimizer:
         if append: mode = 'a'
         
         f = []
-        for file in files:
-            f.append(open(self.save_path+file, mode))
-            
-        np.savetxt(f[0], 1/np.asarray(self.metrics['spot']), fmt='%10.3f')
-        np.savetxt(f[1], self.metrics['maxmet'], fmt='%10.3f')
-        np.savetxt(f[2], self.metrics['mean'], fmt='%10.3f')
-        np.savetxt(f[3], self.metrics['maxint'], fmt='%d')
-        np.savetxt(f[4], self.metrics['roi'], fmt='%d')
-        np.savetxt(f[5],self.metrics['masks'], fmt='%d')
-        np.savetxt(self.save_path+'/bestmask.txt',self.parent_masks.get_slm_masks()[-1], fmt = '%d')
-        if not isinstance(self.parent_masks.get_base_mask(),int):
-            np.savetxt(self.save_path+'/base_mask.txt',self.parent_masks.get_base_mask(), fmt = '%d')
+
+        if roi_only:
+            f.append(open(self.save_path+'/roi.txt', mode))
+            np.savetxt(f[0], self.metrics['roi'], fmt='%d')
+        else:
+            f = []
+            for file in files:
+                f.append(open(self.save_path+file, mode))
+            np.savetxt(f[0], 1/np.asarray(self.metrics['spot']), fmt='%10.3f')
+            np.savetxt(f[1], self.metrics['maxmet'], fmt='%10.3f')
+            np.savetxt(f[2], self.metrics['mean'], fmt='%10.3f')
+            np.savetxt(f[3], self.metrics['maxint'], fmt='%d')
+            np.savetxt(f[4], self.metrics['roi'], fmt='%d')
+            np.savetxt(f[5],self.metrics['masks'], fmt='%d')
+            np.savetxt(self.save_path+'/bestmask.txt',self.parent_masks.get_slm_masks()[-1], fmt = '%d')
+            if not isinstance(self.parent_masks.get_base_mask(),int):
+                np.savetxt(self.save_path+'/base_mask.txt',self.parent_masks.get_base_mask(), fmt = '%d')
 
         for x in f:
             x.close()
