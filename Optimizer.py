@@ -386,7 +386,7 @@ class Optimizer:
     def run_zernike(self, zmodes, coeff_range, cumulative=True):
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
         print('Zernike optimizer running...')
-        best_zmodes = np.zeros(48)
+        best_zmodes = np.zeros(49)
         self.args.zernike_coeffs = [0]
         self.init_metrics()
         args0 = copy.copy(self.args)
@@ -441,7 +441,7 @@ class Optimizer:
     def map_zspace(self, zmodes, coeff_range, repeat=10, cumulative=True):
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
         print('Zernike optimizer running...')
-        best_zmodes = np.zeros(48)
+        best_zmodes = np.zeros(49)
         self.args.zernike_coeffs = [0]
         self.init_metrics()
         args0 = copy.copy(self.args)
@@ -481,17 +481,6 @@ class Optimizer:
         np.savetxt(self.save_path+'/optimized_zmodes.txt',best_zmodes, fmt='%d')
         coeff_vector = np.asarray([[x]*repeat for x in coeffs]).flatten()
         np.savetxt(self.save_path+'/coeff_vector.txt',coeff_vector, fmt='%d')
-##        self.parent_masks.update_zernike_parent(best_zmodes)
-##        self.parent_masks.update_base_mask(initial_base_mask)
-##        self.interface.get_output_fields(self.parent_masks)
-##        self.update_metrics(save_mask=True)
-        
-##        self.save_checkpoint()
-##        self.final_log()
-##        self.save_plots()
-##        self.get_final_metrics()
-##        self.parent_masks.update_zernike_parent(best_zmodes)
-##        self.parent_masks.update_base_mask(initial_base_mask)
         self.save_path = args0.save_path
 
 
@@ -500,22 +489,21 @@ class Optimizer:
         print('Recording Deep Learning data...')
         zlist = []
         self.init_metrics()
-        args.zernike_coeffs=[0]
+        self.args.zernike_coeffs=[0]
         args0 = copy.copy(self.args)
         args0.num_masks=1
         self.parent_masks = Population.Population(args0,self.base_mask)
         self.initial_zernike_log(zmodes,coeff_range)
 
-        zmodes = np.arange(max(3,min(zmodes)),min(49,max(zmodes)))
+        zmodes = np.arange(max(1,min(zmodes)),min(49,max(zmodes)))
         coeff_range = np.arange(coeff_range[0],coeff_range[1]+1)
         for i in range(num_data+1):
             coeffs = np.random.choice(coeff_range, zmodes.shape, replace=True)
-            
-            self.init_metrics()
+            clist = self.get_coeff_list(zmodes,coeffs)
             os.makedirs(self.save_path,exist_ok=True)
-            zlist.append(coeffs)
+            zlist.append(clist)
             
-            self.parent_masks.update_zernike_parent(self.get_coeff_list(zmodes,coeffs))
+            self.parent_masks.update_zernike_parent(clist)
             self.interface.get_output_fields(self.parent_masks)
             self.update_metrics(update_type='initial',save_mask=False)
 
@@ -534,9 +522,9 @@ class Optimizer:
     def get_coeff_list(self,zmodes,coeffs):
         if not isinstance(zmodes,(list,np.ndarray)):
             zmodes, coeffs = [zmodes], [coeffs]
-        cfs = np.zeros(48)
+        cfs = np.zeros(49)
         for i, zmode in enumerate(zmodes):
-            cfs[zmode-3] = coeffs[i]
+            cfs[zmode] = coeffs[i]
         return cfs
 
     
