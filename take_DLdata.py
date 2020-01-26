@@ -9,7 +9,7 @@ import Optimizer, Interface, Population, textwrap
 
 
 def main(args):
-    start_num = '11-27_SINGLEplastic_newzernike'
+    start_num = 'DLdata_400_t2'
     run_description = 'Double Plastic scattering material. Testing new corrected zernike vs. Conkey et. al. genetic algorithm \
 with the same mutation rates. \
 Zernike optimization using corrected scaling. \
@@ -25,64 +25,41 @@ Exposure value at -6.'
     print('Run Description: ',run_description)
     file.write('Description: '+run_description+'\n\n')
     file.close()
-    
     interface = Interface.Interface(args)
-
-    args.mutate_initial_rate = 0.02
-    args.mutate_final_rate = 0.005
-    args.mutate_decay_factor = 650
-
-    args.num_initial_metrics = 50
-    args.num_masks = 20
-    args.num_childs = 15
-    args.fitness_func = 'max'
     args0 = copy.copy(args)
     
     
-    coeffs = [0]
-    DLmodes = np.arange(3,27)
-
-##    segments = [[64,96],[64,48],[32,48],[32,24]]
-    segments = [[64,96],[32,48]]
-    mutates = {'True':0.02,'False':0.04}
-    gens = [1500,2000]
-
-    args = copy.copy(args0)
-    args.save_path = folder+'/zopt'
-    zopt = Optimizer.Optimizer(args,interface)
-
-    zmodes = np.arange(3,49)
-    zopt = Optimizer.Optimizer(args,interface)
-    if os.path.isfile(args.save_path+'/optimized_zmodes.txt'):
-        opt_zmodes = np.loadtxt(args.save_path+'/optimized_zmodes.txt')
-        print(opt_zmodes)
-        zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
-        print(zopt_mask.shape)
-    else:
-        zopt.run_zernike(zmodes,[-600,600])
-        zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
-
-
-    coeff_range = [-600,600]
-    DLmodes = np.arange(3,13)
-    num_data = 100
-    batch_size = 10
+    optimize_zernike = True
+    
+    zopt_mask = 0
+    if optimize_zernike:
+        args = copy.copy(args0)
+        args.save_path = folder+'/zopt'
+        zopt = Optimizer.Optimizer(args,interface)
+        zmodes = np.arange(3,16)
+        zopt = Optimizer.Optimizer(args,interface)
+        if os.path.isfile(args.save_path+'/optimized_zmodes.txt'):
+            opt_zmodes = np.loadtxt(args.save_path+'/optimized_zmodes.txt')
+            print(opt_zmodes)
+            zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
+            print(zopt_mask.shape)
+        else:
+            zopt.run_zernike(zmodes,[-600,600])
+            zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
+    
+    coeff_range = [-400,400]
+    DLmodes = np.arange(1,10)
+    num_data = 100000
+    batch_size = 1000
 
     args = copy.copy(args0)
     args.save_path = folder+'/DLdata'
     DLopt = Optimizer.Optimizer(args,interface,base_mask=zopt_mask)
     DLopt.record_DLdata(DLmodes, coeff_range, num_data, batch_size)
                 
-
-                        
-                        
-                    print('\n\nDONE with genetic optimization............\n\n')
-
-            print('\n\nDONE with zernike optimization............\n\n')
-    
-    # compare masks in folder
-    gopt.run_compare_all_in_folder(folder,run_time=[4,0,0])
-                
+                 
+    print('\n\nDONE with zernike optimization............\n\n')
+                    
 if __name__ == '__main__':
     if len(sys.argv)==2 and sys.argv[1]=='--help':
         print(__doc__)
