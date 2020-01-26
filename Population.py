@@ -173,10 +173,10 @@ class Population:
         if zcoeffs is None:
             zcoeffs = self.zernike_coeffs
         if zmodes is None:
-            zmodes = np.arange(len(zcoeffs))+3
+            zmodes = np.arange(len(zcoeffs))
         newmask = self.create_full_mask(self.create_mask(True,masktype='rect'),masktype='rect').astype(np.float32)
         for i,coefficient in enumerate(zcoeffs):
-            if coefficient != 0 and zmodes[i]>= 3 and zmodes[i]<=48:
+            if coefficient != 0 and zmodes[i]>= 1 and zmodes[i]<=48:
                 if zbasis:
                     if self.zbasis is None:
                         self.init_zbasis()
