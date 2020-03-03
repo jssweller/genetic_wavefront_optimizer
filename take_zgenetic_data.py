@@ -1,25 +1,25 @@
 import numpy as np
-import win32pipe as wp
-import win32file as wf
+from alerts import send_alert
 import matplotlib.pyplot as plt
-import pyscreenshot as ImageGrab
-import time, datetime, sys, os, argparse, copy, shutil
+import time, datetime, sys, os, argparse, copy, shutil, traceback
 
 import Optimizer, Interface, Population, textwrap
 
+start_num = '2-25-20_phantom104g_2mm'
+folder = 'Z:/430_data/run_'+str(start_num)
 
-def main(args):
-    start_num = '11-27_SINGLEplastic_newzernike'
-    run_description = 'Double Plastic scattering material. Testing new corrected zernike vs. Conkey et. al. genetic algorithm \
-with the same mutation rates. \
-Zernike optimization using corrected scaling. \
+def main(args, folder):    
+    run_description = 'Phantom with 104g (R7-2) aluminum scatterer, 2mm thick. \
 zbasis = False. \
 No reference beam. \
 Exposure value at -6.'
-    folder = '../run_'+str(start_num)
     os.makedirs(folder,exist_ok=True)
     shutil.copy(sys.argv[0],folder+'/mainscript.py')
     shutil.copystat(sys.argv[0],folder+'/mainscript.py')
+
+    file = open(os.path.join(folder,'status.txt'), 'w+')
+    file.write('Script running...\n\n')
+    file.close()
 
     file = open(folder+'/log.txt','w+')
     print('Run Description: ',run_description)
@@ -29,7 +29,7 @@ Exposure value at -6.'
     interface = Interface.Interface(args)
 
     args.mutate_initial_rate = 0.02
-    args.mutate_final_rate = 0.005
+    args.mutate_final_rate = 0.001
     args.mutate_decay_factor = 650
 
     args.num_initial_metrics = 50
@@ -40,24 +40,25 @@ Exposure value at -6.'
     
     
     coeffs = [0]
-    modes = np.arange(3,27)
-
 ##    segments = [[64,96],[64,48],[32,48],[32,24]]
-    segments = [[64,96],[32,48]]
-    mutates = {'True':0.02,'False':0.04}
-    gens = [1500,2000]
+    segments = [[32,24],[32,48],[64,96]]
+    mutates = {'True':[0.01,0.02,0.04],'False':[0.01,0.02,0.04]}
+    mutates_conkey = {'True':[0.04,0.05,0.06],'False':[0.06,0.07,0.08]}
+##    mutates = [0.14,0.02,0.04,0.06,0.1]
+##    mutates.reverse()
+##    segments.reverse()
+    gens = [3000,2000,1500]
 
     args = copy.copy(args0)
     args.save_path = folder+'/zopt'
     zopt = Optimizer.Optimizer(args,interface)
 
     ########## zgenetic ################
-       
 ##    zopt_mask = 0
-    modes = np.arange(0,4)
+    modes = np.arange(1,5)
     for coeff in coeffs:
         for mode in modes:
-            zmodes = np.arange(3,27)
+            zmodes = np.arange(3,49)
             args.save_path = folder+'/zopt_mode_'+str(mode)
             zopt = Optimizer.Optimizer(args,interface)
             if os.path.isfile(args.save_path+'/optimized_zmodes.txt'):
@@ -70,47 +71,70 @@ Exposure value at -6.'
                 zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
 ##                zopt_mask = 0
             for s, segment in enumerate(segments):
-                for zbase in [True,False]:
-                    clist = np.zeros(13)
-                    clist[mode-3]=coeff
-                    args = copy.copy(args0)
-                    args.zernike_coeffs = clist.tolist()
+                s = -s-1 # reverse order
+##                if segments[s][0] != 64:
+##                    continue
+                for zbase in [True, False]:
 
-                    args.segment_width = segment[0]
-                    args.segment_height = segment[1]
-                    args.gens = gens[s]
-                    args.mutate_initial_rate = mutates[str(zbase)]
+                        if mode > 3 and zbase==False:
+                            continue
+                        clist = np.zeros(13)
+                        clist[mode-3]=coeff
+                        args = copy.copy(args0)
+                        args.zernike_coeffs = clist.tolist()
 
-                    args.measure_all = True
-                    args.add_uniform_childs = True
-                    args.uniform_parent_prob = 0
+                        args.segment_width = segments[s][0]
+                        args.segment_height = segments[s][1]
+                        args.gens = gens[s]
+                        args.mutate_initial_rate = mutates[str(zbase)][s]
 
-                    
-                    segment_save = '/'+str(args.segment_height)+'_'+str(args.segment_width)
-                    args.save_path = folder+'/mode_'+str(mode)+'_coeff_'+str(coeff) + segment_save + '_zbase_'+str(zbase)
+                        args.measure_all = True
+                        args.add_uniform_childs = True
+                        args.uniform_parent_prob = 0
 
-                    
-                    if zbase:
-                        gopt = Optimizer.Optimizer(args,interface,base_mask=zopt_mask)
-                    else:
-                        gopt = Optimizer.Optimizer(args,interface,base_mask=0)
-                    gopt.run_genetic()
-    
-                    # Test Conkey et al. genetic algorithm (no uniform child)
-                    if zbase:
+                        
+                        segment_save = '/'+str(args.segment_height)+'_'+str(args.segment_width)
+                        args.save_path = folder+'/mode_'+str(mode)+'_coeff_'+str(coeff) + segment_save + '_zbase_'+str(zbase)
+##                        args.save_path += '_mutate_'+str(round(mutate,2))
+
+                        if zbase:
+                            gopt = Optimizer.Optimizer(args,interface,base_mask=zopt_mask)
+##                        else:
+##                            gopt = Optimizer.Optimizer(args,interface,base_mask=0)
+                            
+##                        if segment[1] == 24 and zbase: # already ran these
+##                            continue
+##                        if segment[1] != 24:
+##                            gopt.run_genetic()
+                            
+        
+                        # Test Conkey et al. genetic algorithm (no uniform child)
                         args.add_uniform_childs = False
+                        args.mutate_initial_rate = mutates_conkey[str(zbase)][s]
                         args.save_path += '_conkey'
-                        gopt = Optimizer.Optimizer(args,interface,base_mask=zopt_mask)
+                        if zbase:
+                            gopt = Optimizer.Optimizer(args,interface,base_mask=zopt_mask)
+                        else:
+                            
+                            gopt = Optimizer.Optimizer(args,interface,base_mask=0)
                         gopt.run_genetic()
                         
                         
-                    print('\n\nDONE with genetic optimization............\n\n')
+                        print('\n\nDONE with genetic optimization............\n\n')
 
             print('\n\nDONE with zernike optimization............\n\n')
+
+    args.save_path = folder+'/zopt_mode_'+str(mode)+'_final'
+    zopt = Optimizer.Optimizer(args,interface)
+    zopt.run_zernike(zmodes,[-800,800])
     
     # compare masks in folder
-    gopt.run_compare_all_in_folder(folder,run_time=[4,0,0])
-                
+    gopt.run_compare_all_in_folder(folder,run_time=[1,0,0])
+
+    file = open(os.path.join(folder,'status.txt'), 'a')
+    file.write('Script has finished...')
+    file.close()
+                                    
 if __name__ == '__main__':
     if len(sys.argv)==2 and sys.argv[1]=='--help':
         print(__doc__)
@@ -268,5 +292,27 @@ if __name__ == '__main__':
         default=500,
         help='Number of uniform mask measurements to average over for initial metric values. DEFAULT="100"'
     )
-
-    main(parser.parse_args())
+    try:
+        main(parser.parse_args(), folder)
+    except Exception as e:
+        print('caught error')
+        send_alert(message=str(e))
+        try:
+            with open(os.path.join(folder,'status.txt'),'a') as statusfile:
+                statusfile.write(str(time.strftime('-----------------------\n\n')))
+                statusfile.write(str(time.strftime("%a, %d %b %Y %H:%M:%S"))+'\n\n')
+                statusfile.write(str(e)+'\n')
+                statusfile.write(traceback.format_exc()+'\n')
+                print(traceback.format_exc())
+        except Exception as a:
+            send_alert(message=str(a))
+        
+    # run complete
+    send_alert(message='', subject='Lab430 Run Ended.')
+    try:
+        with open(os.path.join(folder,'status.txt'), 'a') as statusfile:
+            statusfile.write(str(time.strftime('-----------------------\n\n')))
+            statusfile.write(str(time.strftime("%a, %d %b %Y %H:%M:%S"))+'\n\n')
+            statusfile.write('Run Completed'+'\n')
+    except Exception as a:
+            send_alert(message=str(a)) 
