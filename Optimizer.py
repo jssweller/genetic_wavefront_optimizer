@@ -498,8 +498,12 @@ class Optimizer:
         zmodes = np.arange(max(1,min(zmodes)),min(49,max(zmodes)))
         coeff_range = np.arange(coeff_range[0],coeff_range[1]+1)
         for i in range(num_data+1):
-            coeffs = np.random.choice(coeff_range, zmodes.shape, replace=True)
-            clist = self.get_coeff_list(zmodes,coeffs)
+            numps = np.arange(0,max(zmodes.shape)+1)
+            p = (numps+0.1)**(1/1.5) # probability dist for choosing number of polynomials
+            c_numps = np.random.choice(numps,size=1, p=p/sum(p)) # randomly choose number of polynomials in aberration
+            c_zmodes = np.random.choice(zmodes, c_numps, replace=False) # choose polynomials
+            coeffs = np.random.choice(coeff_range, c_numps, replace=True) # choose coefficients
+            clist = self.get_coeff_list(c_zmodes,coeffs) # get formatted coefficient list
             os.makedirs(self.save_path,exist_ok=True)
             zlist.append(clist)
             
@@ -554,7 +558,8 @@ class Optimizer:
         if method == 'poly':
             max_coeff = get_polybest(coeffs,maxmets,np.argmax)
             spot_coeff = get_polybest(coeffs,spotmets,np.argmax)
-            best_coeff = int((max_coeff+spot_coeff)/2)
+##            best_coeff = int((max_coeff+spot_coeff)/2)
+            best_coeff = int(max_coeff)
         elif method == 'max':
             max_coeff = np.argmax(maxmets)
             spot_coeff = np.argmax(spotmets)
