@@ -9,12 +9,13 @@ import Optimizer, Interface, Population, textwrap
 
 
 def main(args):
-    start_num = 'DLdata_400_t2'
-    run_description = 'Double Plastic scattering material. Testing new corrected zernike vs. Conkey et. al. genetic algorithm \
-with the same mutation rates. \
-Zernike optimization using corrected scaling. \
-zbasis = False. \
-No reference beam. \
+    start_num = 'DLdata_c400_z1-9_112x112_100k'
+    run_description = 'Simulated aberrations and images for Deep Learning Training \n\
+112x112 image dimensions. \n\
+Zernike Polynomials 1-9. \n\
+Fully randomized aberration generation. \n\
+Zernike optimization using corrected scaling. \n\
+zbasis = False. \n\
 Exposure value at -6.'
     folder = '../run_'+str(start_num)
     os.makedirs(folder,exist_ok=True)
@@ -49,7 +50,7 @@ Exposure value at -6.'
     
     coeff_range = [-400,400]
     DLmodes = np.arange(1,10)
-    num_data = 100000
+    num_data = 500000
     batch_size = 1000
 
     args = copy.copy(args0)
