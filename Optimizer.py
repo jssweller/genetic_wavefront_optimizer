@@ -84,7 +84,7 @@ class Optimizer:
         self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
         self.update_metrics(uniform_pop, 'initial',save_mask=save_mask, save_roi=save_roi)
         os.makedirs(self.save_path, exist_ok=True)
-        np.savetxt(self.save_path+'/initial_mean_intensity_roi.txt', uniform_pop.get_output_fields(), fmt='%d')
+        np.savez_compressed(self.save_path+'/initial_mean_intensity_roi', data=np.array(uniform_pop.get_output_fields(),dtype=np.uint8))
         
     def get_final_metrics(self):
         print('\nGetting final metrics...\n')
@@ -104,7 +104,7 @@ class Optimizer:
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
         final_mean_intensity = uniform_pop.get_output_fields()
-        np.savetxt(self.save_path+'/final_mean_intensity_roi.txt', final_mean_intensity, fmt='%d')
+        np.savez_compressed(self.save_path+'/final_mean_intensity_roi', data=np.array(final_mean_intensity,dtype=np.uint8))
         file = open(self.save_path+'/log.txt','a')
         file.write('Final Avg Intensity: '+str(np.mean(final_mean_intensity))+'\n')
         file.close()
@@ -512,8 +512,8 @@ class Optimizer:
         self.save_path = args0.save_path
         os.makedirs(self.save_path,exist_ok=True)
         np.savetxt(self.save_path+'/optimized_zmodes.txt',best_zmodes, fmt='%d')
-        coeff_vector = np.asarray([[x]*repeat for x in coeffs]).flatten()
-        np.savetxt(self.save_path+'/coeff_vector.txt',coeff_vector, fmt='%d')
+        coeff_vector = np.array([[x]*repeat for x in coeffs], dtype=np.int).flatten()
+        np.savez_compressed(self.save_path+'/coeff_vector.txt', data=coeff_vector)
         self.save_path = args0.save_path
 
 
@@ -548,10 +548,9 @@ class Optimizer:
                 savenum = i+1
                 self.save_path = os.path.join(args0.save_path,'data'+str(savenum))
                 os.makedirs(self.save_path,exist_ok=True)
-                self.save_checkpoint(append=True, roi_only=True)
-                zfile = open(os.path.join(self.save_path,'zcoeffs.txt'), 'a')
-                np.savetxt(zfile, zlist, fmt='%d')
-                zfile.close()
+                self.save_checkpoint(append=True, roi_only=True, compressed=True)
+                with open(os.path.join(self.save_path,'zcoeffs'), 'a') as zfile:
+                    np.savez_compressed(zfile, data=np.array(zlist, dtype=np.uint8))
                 self.init_metrics()
                 zlist = []
                 
@@ -681,13 +680,27 @@ class Optimizer:
         file.close()
         
         
-    def save_checkpoint(self, append=False, roi_only=False):
-        files = ['/spot_metric_vals_checkpoint.txt',
-                 '/max_metric_vals_checkpoint.txt',
-                 '/mean_intensity_vals_checkpoint.txt',
-                 '/max_intensity_vals_checkpoint.txt',
-                 '/roi.txt',
-                 '/masks.txt']
+    def save_checkpoint(self, append=False, roi_only=False, compressed=False):
+        files = {'spot':'/spot_metric_vals_checkpoint.txt',
+                 'maxmet': '/max_metric_vals_checkpoint.txt',
+                 'mean':'/mean_intensity_vals_checkpoint.txt',
+                 'max':'/max_intensity_vals_checkpoint.txt',
+                 'roi':'/roi.txt',
+                 'masks':'/masks.txt'}
+
+        dtype = {'spot':np.float16,
+                 'maxmet': np.float16,
+                 'mean': np.float16,
+                 'maxint': np.uint8,
+                 'roi': np.uint8,
+                 'masks': np.uint8}
+
+        fmt = {'spot': '%10.3f',
+                 'maxmet': '%10.3f',
+                 'mean': '%10.3f',
+                 'maxint': '%d',
+                 'roi': '%d',
+                 'masks': '%d'}
 
         mode = 'w'
         if append: mode = 'a'
@@ -695,49 +708,75 @@ class Optimizer:
         f = []
 
         if roi_only:
-            f.append(open(self.save_path+'/roi.txt', mode))
-            np.savetxt(f[0], self.metrics['roi'], fmt='%d')
+            if compressed:
+                f.append(open(self.save_path+'/roi', mode))
+                np.savez_compressed(f[0], data=np.array(self.metrics['roi'],dtype=np.uint8))
+            else:
+                f.append(open(self.save_path+'/roi.txt', mode))
+                np.savetxt(f[0], self.metrics['roi'], fmt='%d')
         else:
             f = []
             for file in files:
+                if compressed:
+                    file = file.replace('.txt','')
                 f.append(open(self.save_path+file, mode))
-            np.savetxt(f[0], 1/np.asarray(self.metrics['spot']), fmt='%10.3f')
-            np.savetxt(f[1], self.metrics['maxmet'], fmt='%10.3f')
-            np.savetxt(f[2], self.metrics['mean'], fmt='%10.3f')
-            np.savetxt(f[3], self.metrics['maxint'], fmt='%d')
-            np.savetxt(f[4], self.metrics['roi'], fmt='%d')
-            np.savetxt(f[5],self.metrics['masks'], fmt='%d')
-            np.savetxt(self.save_path+'/bestmask.txt',self.parent_masks.get_slm_masks()[-1], fmt = '%d')
-            if not isinstance(self.parent_masks.get_base_mask(),int):
-                np.savetxt(self.save_path+'/base_mask.txt',self.parent_masks.get_base_mask(), fmt = '%d')
+            if compressed:
+                for key in self.metrics:
+                    data = np.array(self.metrics[key],dtype=dtype[key])
+                    if key=='spot':
+                        data = 1/data
+                    np.savez_compressed(f[key], data=data)
+                np.savez_compressed(self.save_path+'/bestmask',data=np.array(self.parent_masks.get_slm_masks()[-1], dtype=np.uint8))
+                if not isinstance(self.parent_masks.get_base_mask(),int):
+                    np.savez_compressed(self.save_path+'/base_mask',data=np.array(self.parent_masks.get_base_mask(), dtype=np.uint8))
+            else:
+                for key in self.metrics:
+                    data = np.array(self.metrics[key],dtype=dtype[key])
+                    if key=='spot':
+                        data = 1/data
+                    np.savetxt(f[key], data, fmt=fmt[key])
+                                        
+                np.savetxt(self.save_path+'/bestmask.txt',self.parent_masks.get_slm_masks()[-1], fmt = '%d')
+                if not isinstance(self.parent_masks.get_base_mask(),int):
+                    np.savetxt(self.save_path+'/base_mask.txt',self.parent_masks.get_base_mask(), fmt = '%d')
 
         for x in f:
             x.close()
 
     def load_checkpoint(self, fdir=None, load_roi=True, load_masks=True):
-        fdict = {'spot':'/spot_metric_vals_checkpoint.txt',
-                 'maxmet':'/max_metric_vals_checkpoint.txt',
-                 'mean':'/mean_intensity_vals_checkpoint.txt',
-                 'maxint':'/max_intensity_vals_checkpoint.txt',
-                 'roi':'/roi.txt',
-                 'masks':'/masks.txt'}
+        fdict = {'spot':'spot_metric',
+                 'maxmet':'max_metric',
+                 'mean':'mean_intensity',
+                 'maxint':'max_intensity',
+                 'roi':'/roi',
+                 'masks':'/masks'}
         
         dtype = {'spot':np.float,
                  'maxmet': np.float,
-                 'mean': np.float ,
+                 'mean': np.float,
                  'maxint': np.uint8,
                  'roi': np.uint8,
                  'masks': np.uint8}
-        
+
+        loadbool = {x:False for x in fdict.keys()}
         if fdir is None:
             fdir = self.save_path
-        
-        for met in fdict.keys():
-            if (met == 'roi' and not load_roi) or (met == 'masks' and not load_masks):
-                continue
-            if os.path.isfile(self.save_path + fdict[met]):
-                self.metrics[met] = np.loadtxt(self.save_path + fdict[met], dtype=dtype[met])
-            else:
+
+        for root,dirs,files in os.walk(self.save_path):
+            for file in files:
+                for met in fdict.keys():
+                    if (met == 'roi' and not load_roi) or (met == 'masks' and not load_masks):
+                        continue
+                    if fdict[met] in file:
+                        if '.txt' in file:                            
+                            self.metrics[met] = np.loadtxt(os.path.join(root,file), dtype=dtype[met])
+                            loadbool[key] = True
+                        if '.npz' in file:
+                            data = np.load(os.path.join(root,file),encoding='latin1', allow_pickle=True)
+                            self.metrics[met] = data[data.keys()[0]]
+                            loadbool[key] = True
+        for met in loadbool.keys():
+            if not loadbool[key]:
                 print('WARNING: Metric '+met+' not loaded.','\nfile not found:',self.save_path + fdict[met])
   
     
