@@ -55,7 +55,7 @@ Exposure value at -6.'
 
     ########## zgenetic ################
 ##    zopt_mask = 0
-    modes = np.arange(1,5)
+    modes = np.arange(4,5)
     for coeff in coeffs:
         for mode in modes:
             zmodes = np.arange(3,49)
@@ -72,8 +72,8 @@ Exposure value at -6.'
 ##                zopt_mask = 0
             for s, segment in enumerate(segments):
                 s = -s-1 # reverse order
-##                if segments[s][0] != 64:
-##                    continue
+                if segments[s][0] == 64:
+                    continue
                 for zbase in [True, False]:
 
                         if mode > 3 and zbase==False:
