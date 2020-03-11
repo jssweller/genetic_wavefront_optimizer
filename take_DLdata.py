@@ -36,25 +36,25 @@ Exposure value at -6.'
     optimize_zernike = True
     
     zopt_mask = 0
-##    if optimize_zernike:
-##        args = copy.copy(args0)
-##        args.save_path = folder+'/zopt'
-##        zopt = Optimizer.Optimizer(args,interface)
-##        zmodes = np.arange(3,16)
-##        zopt = Optimizer.Optimizer(args,interface)
-##        if os.path.isfile(args.save_path+'/optimized_zmodes.txt'):
-##            opt_zmodes = np.loadtxt(args.save_path+'/optimized_zmodes.txt')
-##            print(opt_zmodes)
-##            zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
-##            print(zopt_mask.shape)
-##        else:
-##            zopt.run_zernike(zmodes,[-600,600])
-##            zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
+    if optimize_zernike:
+        args = copy.copy(args0)
+        args.save_path = folder+'/zopt'
+        zopt = Optimizer.Optimizer(args,interface)
+        zmodes = np.arange(3,16)
+        zopt = Optimizer.Optimizer(args,interface)
+        if os.path.isfile(args.save_path+'/optimized_zmodes.txt'):
+            opt_zmodes = np.loadtxt(args.save_path+'/optimized_zmodes.txt')
+            print(opt_zmodes)
+            zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
+            print(zopt_mask.shape)
+        else:
+            zopt.run_zernike(zmodes,[-600,600])
+            zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
     
     coeff_range = [-400,400]
     DLmodes = np.arange(1,10)
     num_data = 2*10**6
-    batch_size = 5
+    batch_size = 1000
 
     args = copy.copy(args0)
     args.save_path = folder+'/DLdata'
@@ -221,7 +221,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--num_initial_metrics', type=int,
-        default=500,
+        default=50,
         help='Number of uniform mask measurements to average over for initial metric values. DEFAULT="100"'
     )
     try:
