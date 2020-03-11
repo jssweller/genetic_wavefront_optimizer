@@ -706,13 +706,13 @@ class Optimizer:
                     if fdict[met] in file:
                         if '.txt' in file:                            
                             self.metrics[met] = np.loadtxt(os.path.join(root,file), dtype=dtype[met])
-                            loadbool[key] = True
+                            loadbool[met] = True
                         if '.npz' in file:
                             data = np.load(os.path.join(root,file),encoding='latin1', allow_pickle=True)
                             self.metrics[met] = data[data.keys()[0]]
-                            loadbool[key] = True
+                            loadbool[met] = True
         for met in loadbool.keys():
-            if not loadbool[key]:
+            if not loadbool[met]:
                 print('WARNING: Metric '+met+' not loaded.','\nfile not found:',self.save_path + fdict[met])
   
     
