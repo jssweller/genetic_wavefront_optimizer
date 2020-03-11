@@ -81,7 +81,7 @@ class Optimizer:
         self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
         self.update_metrics(uniform_pop, 'initial',save_mask=save_mask)
         os.makedirs(self.save_path, exist_ok=True)
-        np.savez_compressed(self.save_path+'/initial_mean_intensity_roi', data=np.array(uniform_pop.get_output_fields(),dtype=np.uint8))
+        np.savez_compressed(self.save_path+'/initial_mean_intensity_roi',  data=np.array(uniform_pop.get_output_fields(),dtype=np.uint8))
         
     def get_final_metrics(self):
         print('\nGetting final metrics...\n')
@@ -101,7 +101,7 @@ class Optimizer:
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
         final_mean_intensity = uniform_pop.get_output_fields()
-        np.savez_compressed(self.save_path+'/final_mean_intensity_roi', data=np.array(final_mean_intensity,dtype=np.uint8))
+        np.savez_compressed(self.save_path+'/final_mean_intensity_roi',  data=np.array(final_mean_intensity,dtype=np.uint8))
         file = open(self.save_path+'/log.txt','a')
         file.write('Final Avg Intensity: '+str(np.mean(final_mean_intensity))+'\n')
         file.close()
@@ -480,7 +480,7 @@ class Optimizer:
         os.makedirs(self.save_path,exist_ok=True)
         np.savetxt(self.save_path+'/optimized_zmodes.txt',best_zmodes, fmt='%d')
         coeff_vector = np.array([[x]*repeat for x in coeffs], dtype=np.int).flatten()
-        np.savez_compressed(self.save_path+'/coeff_vector.txt', data=coeff_vector)
+        np.savez_compressed(self.save_path+'/coeff_vector.txt',  data=coeff_vector)
         self.save_path = args0.save_path
 
 
@@ -515,9 +515,9 @@ class Optimizer:
                 savenum = i+1
                 self.save_path = os.path.join(args0.save_path,'data'+str(savenum))
                 os.makedirs(self.save_path,exist_ok=True)
-                self.save_checkpoint(append=True, roi_only=True, compressed=True)
-                with open(os.path.join(self.save_path,'zcoeffs'), 'a') as zfile:
-                    np.savez_compressed(zfile, data=np.array(zlist, dtype=np.uint8))
+                self.save_checkpoint(append=False, roi_only=True, compressed=True)
+                with open(os.path.join(self.save_path,'zcoeffs.npz'), 'wb') as zfile:
+                    np.savez_compressed(zfile,  data=np.array(zlist, dtype=np.uint8))
                 self.init_metrics()
                 zlist = []
                 
@@ -619,7 +619,7 @@ class Optimizer:
         files = {'spot':'/spot_metric_vals_checkpoint.txt',
                  'maxmet': '/max_metric_vals_checkpoint.txt',
                  'mean':'/mean_intensity_vals_checkpoint.txt',
-                 'max':'/max_intensity_vals_checkpoint.txt',
+                 'maxint':'/max_intensity_vals_checkpoint.txt',
                  'roi':'/roi.txt',
                  'masks':'/masks.txt'}
 
@@ -637,33 +637,34 @@ class Optimizer:
                  'roi': '%d',
                  'masks': '%d'}
 
-        mode = 'w'
-        if append: mode = 'a'
+        mode = 'wb'
+        if append and not compressed: mode = 'ab'
         
-        f = []
+        f = {}
 
         if roi_only:
             if compressed:
-                f.append(open(self.save_path+'/roi', mode))
-                np.savez_compressed(f[0], data=np.array(self.metrics['roi'],dtype=np.uint8))
+                f[0] = open(os.path.join(self.save_path,'roi.npz'), mode)
+                data = np.array(self.metrics['roi'],dtype=np.uint8)
+                np.savez_compressed(f[0],  data=data)
             else:
-                f.append(open(self.save_path+'/roi.txt', mode))
+                f.append(open(os.path.join(self.save_path,'roi.txt'), mode))
                 np.savetxt(f[0], self.metrics['roi'], fmt='%d')
         else:
-            f = []
-            for file in files:
+            f = {}
+            for key, file in files.items():
                 if compressed:
-                    file = file.replace('.txt','')
-                f.append(open(self.save_path+file, mode))
+                    file = file.replace('.txt','.npz')
+                f[key]= open(os.path.join(self.save_path,file), mode)
             if compressed:
                 for key in self.metrics:
                     data = np.array(self.metrics[key],dtype=dtype[key])
                     if key=='spot':
                         data = 1/data
                     np.savez_compressed(f[key], data=data)
-                np.savez_compressed(self.save_path+'/bestmask',data=np.array(self.parent_masks.get_slm_masks()[-1], dtype=np.uint8))
+                np.savez_compressed(os.path.join(self.save_path,'bestmask'), data=np.array(self.parent_masks.get_slm_masks()[-1], dtype=np.uint8))
                 if not isinstance(self.parent_masks.get_base_mask(),int):
-                    np.savez_compressed(self.save_path+'/base_mask',data=np.array(self.parent_masks.get_base_mask(), dtype=np.uint8))
+                    np.savez_compressed(os.path.join(self.save_path,'base_mask'), data=np.array(self.parent_masks.get_base_mask(), dtype=np.uint8))
             else:
                 for key in self.metrics:
                     data = np.array(self.metrics[key],dtype=dtype[key])
@@ -676,7 +677,7 @@ class Optimizer:
                     np.savetxt(self.save_path+'/base_mask.txt',self.parent_masks.get_base_mask(), fmt = '%d')
 
         for x in f:
-            x.close()
+            f[x].close()
 
     def load_checkpoint(self, fdir=None, load_roi=True, load_masks=True):
         fdict = {'spot':'spot_metric',
