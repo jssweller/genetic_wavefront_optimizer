@@ -438,7 +438,7 @@ class Optimizer:
         self.parent_masks.update_base_mask(initial_base_mask)
         self.save_path = args0.save_path
 
-    def map_zspace(self, zmodes, coeff_range, repeat=10, cumulative=True):
+    def map_zspace(self, zmodes, coeff_range, repeat=10, step=1, cumulative=True):
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
         print('Zernike optimizer running...')
         best_zmodes = np.zeros(49)
@@ -465,8 +465,7 @@ class Optimizer:
             os.makedirs(self.save_path,exist_ok=True)
             
             # Course search
-            snum = 1
-            coeffs = np.arange(coeff_range[0],coeff_range[1]+1,snum)
+            coeffs = np.arange(coeff_range[0],coeff_range[1]+1,step)
             best_coeff = self.get_best_coefficient(zmode, coeffs, 'max', repeat=repeat, record_all_data=True)
         
             if cumulative:
