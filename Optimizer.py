@@ -35,7 +35,7 @@ class Optimizer:
     def init_metrics(self):
         self.metrics={'masks':[], 'roi':[], 'maxint':[], 'spot':[],'maxmet':[],'mean':[]}
     
-    def update_metrics(self, population=None, update_type='', save_mask=True):
+    def update_metrics(self, population=None, update_type='', save_mask=True, save_roi=True):
         if (update_type == 'final' or update_type == 'initial') and not (population is None):
             spot_metrics, mean_metrics, max_metrics, = [],[],[]
             for field in population.get_output_fields():
@@ -48,9 +48,10 @@ class Optimizer:
             self.metrics['maxint'].append(np.mean(np.max(roi,axis=1)))
             self.metrics['maxmet'].append(np.mean(max_metrics))
             self.metrics['mean'].append(np.mean(mean_metrics))
-            self.metrics['roi'].append(np.mean(roi,axis=0))
-            if save_mask==True:
+            if save_mask:
                 self.metrics['masks'].append(np.array(np.mean(masks,axis=0)).flatten())
+            if save_roi:
+                self.metrics['roi'].append(np.mean(roi,axis=0))
         else:
             population = self.parent_masks
             population.ranksort()
@@ -59,9 +60,10 @@ class Optimizer:
             self.metrics['maxint'].append(np.max(field))
             self.metrics['maxmet'].append(population.fitness(field,'max'))
             self.metrics['mean'].append(population.fitness(field,'mean'))
-            self.metrics['roi'].append(field)
             if save_mask==True:
                 self.metrics['masks'].append(np.array(population.get_masks()[-1]).flatten())
+            if save_roi:
+                self.metrics['roi'].append(field)
         if update_type == 'final':
 ##            self.metrics['roi'][-1]=self.metrics['roi'][-2]
             if save_mask==True and len(self.metrics['masks'])>1:
@@ -73,13 +75,13 @@ class Optimizer:
     def get_time(self):
         return datetime.timedelta(seconds=time.time()-self.time_start)
         
-    def get_initial_metrics(self, save_mask=True):
+    def get_initial_metrics(self, save_mask=True, save_roi=True):
         args0 = copy.copy(self.args)
         args0.zernike_coeffs = [0]
         args0.num_masks = 1
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
-        self.update_metrics(uniform_pop, 'initial',save_mask=save_mask)
+        self.update_metrics(uniform_pop, 'initial',save_mask=save_mask, save_roi=save_roi)
         os.makedirs(self.save_path, exist_ok=True)
         np.savetxt(self.save_path+'/initial_mean_intensity_roi.txt', uniform_pop.get_output_fields(), fmt='%d')
         
@@ -601,7 +603,7 @@ class Optimizer:
         maxmets=[]
         spotmets=[]
         print('coeff',end='')
-
+        
         repcoeffs = []
         for i in range(repeat):
             if shuffle:
@@ -611,15 +613,13 @@ class Optimizer:
                 print('...'+str(coeff),end='')
                 self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
 
-                self.interface.get_output_fields(self.parent_masks,repeat)
-                self.update_metrics(update_type='initial',save_mask=False)
+                self.interface.get_output_fields(self.parent_masks)
+                self.update_metrics(update_type='initial',save_mask=False, save_roi=save_roi)
                 maxmets.append(self.metrics['maxmet'][-1])
                 spotmets.append(self.metrics['spot'][-1])
 
         for met, metlist in self.metrics.items():
-            if not save_roi:
-                if 'roi' in met:
-                    metlist = []
+            if not save_roi and 'roi' in met:
                     continue
             if 'mask' in met:
                 continue
