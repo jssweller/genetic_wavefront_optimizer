@@ -597,42 +597,34 @@ class Optimizer:
         return cfs
 
     
-    def get_best_coefficient(self, zmode, coeffs, method='poly', repeat=10, record_all_data=False, shuffle=False):
+    def get_best_coefficient(self, zmode, coeffs, method='poly', repeat=10, record_all_data=False, shuffle=False, save_roi=False):
         maxmets=[]
         spotmets=[]
         print('coeff',end='')
 
-        if shuffle:
-            np.random.shuffle(coeffs)
-        
-        for i,coeff in enumerate(coeffs):
-            print('...'+str(coeff),end='')
-            self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
-##            if i==0 or coeffs[i-1]==0 or coeff==0:
-##                self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
-##            else:
-##                self.parent_masks.change_parent_zcoeff(coeff)
-##            self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
-            if record_all_data:
-                for i in range(repeat):
-                    self.interface.get_output_fields(self.parent_masks)
-                    self.update_metrics(update_type='initial',save_mask=False)
-            else:
+        repcoeffs = []
+        for i in range(repeat):
+            if shuffle:
+                np.random.shuffle(coeffs)
+            repcoeffs.append(coeffs)
+            for i,coeff in enumerate(coeffs):
+                print('...'+str(coeff),end='')
+                self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
+
                 self.interface.get_output_fields(self.parent_masks,repeat)
                 self.update_metrics(update_type='initial',save_mask=False)
-            maxmets.append(self.metrics['maxmet'][-1])
-            spotmets.append(self.metrics['spot'][-1])
+                maxmets.append(self.metrics['maxmet'][-1])
+                spotmets.append(self.metrics['spot'][-1])
 
-        if shuffle:
-            repcoeffs = coeffs
-            if record_all_data:
-                repcoeffs = np.array([[zz]*repeat for zz in coeffs]).flatten()
-            for met, metlist in self.metrics.items():
-                if 'mask' in met:
+        for met, metlist in self.metrics.items():
+            if not save_roi:
+                if 'roi' in met:
+                    metlist = []
                     continue
-                sortvals = metlist[-len(repcoeffs):]
-                metlist[-len(repcoeffs):] = [sortvals[zz] for zz in np.argsort(repcoeffs)]
-            
+            if 'mask' in met:
+                continue
+            sortvals = metlist[-len(repcoeffs):]
+            metlist[-len(repcoeffs):] = [sortvals[zz] for zz in np.argsort(repcoeffs)]
         print('\n')
 
         if method == 'poly':
