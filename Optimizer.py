@@ -624,7 +624,9 @@ class Optimizer:
             spotmets.append(self.metrics['spot'][-1])
 
         if shuffle:
-            repcoeffs = np.array([[zz]*repeat for zz in coeffs]).flatten()
+            repcoeffs = coeffs
+            if record_all_data:
+                repcoeffs = np.array([[zz]*repeat for zz in coeffs]).flatten()
             for met, metlist in self.metrics.items():
                 if 'mask' in met:
                     continue
