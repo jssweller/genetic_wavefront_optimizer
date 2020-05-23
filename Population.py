@@ -308,29 +308,36 @@ class Population:
             return np.sum(np.multiply(wroi,cen))
             
         if func == 'max':
-            output_field = np.asarray(output_field)
-            midxs = np.argsort(output_field)
-            output_field = output_field[np.argsort(output_field)]
-            return np.mean(
-                np.mean(output_field[-22:-10])*.05
-                + np.mean(output_field[-10:-5])*.1
-                + np.mean(output_field[-5:-1])*.2
-                + output_field[-1]*.65)
-            # Trial max with new weights
-##            return np.mean(
-##                    np.mean(output_field[-22:-10])*.7
-##                    + np.mean(output_field[-10:-5])*.8
-##                    + np.mean(output_field[-5:-1])*.9
-##                    + output_field[-1])            
+##            return max_metric(output_field)
+            return weighted_log_metric(max_metric(output_field),spot_metric(output_field))
 
         if func == 'spot':
-            if np.sum(output_field)==0:
-                return 0
-            return np.sum(np.square(output_field))/np.sum(output_field)**2
+            return spot_metric(output_field)
 
         if func == 'mean':
             return np.mean(output_field)
 
         print('Invalid Fitness Function...')
     
+def weighted_log_metric(maxmet,spotmet):
+    maxmet = np.array(maxmet)
+    maxmet /= np.min(maxmet)
+    maxmet *= 10
+    spotmet = np.array(spotmet)
+    return np.log(maxmet)*spotmet
+
+def spot_metric(output_field):
+    if np.sum(output_field)==0:
+        return 0
+    return np.sum(np.square(output_field))/np.sum(output_field)**2
+
+def max_metric(output_field):
+    output_field = np.asarray(output_field)
+    midxs = np.argsort(output_field)
+    output_field = output_field[np.argsort(output_field)]
+    return np.mean(
+        np.mean(output_field[-22:-10])*.05
+        + np.mean(output_field[-10:-5])*.1
+        + np.mean(output_field[-5:-1])*.2
+        + output_field[-1]*.65)    
 
