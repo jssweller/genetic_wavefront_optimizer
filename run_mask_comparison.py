@@ -1,21 +1,19 @@
 import numpy as np
-import win32pipe as wp
-import win32file as wf
+from alerts import send_alert
 import matplotlib.pyplot as plt
-import pyscreenshot as ImageGrab
-import time, datetime, sys, os, argparse, copy, shutil
-import datetime as dt
+import time, datetime, sys, os, argparse, copy, shutil, traceback
 
 import Optimizer, Interface, Population, textwrap
 
+logfolder = r'Z:\118_data\map_zspacelab118_calibrated_independent_runs\test_calibration2'
 
 def main(args):
 
-    folders = [r'C:\Users\wellerj\Desktop\waveopt_oop\run_10-18_baseline_slm_newsetup'
+    folders = [r'Z:\118_data\map_zspacelab118_calibrated_independent_runs\test_calibration2'
                ]
     
     start_time = [0,0,0] # [hour,minute,add days]
-    run_time = [4,0,0] # [hours,minutes,seconds]
+    run_time = [2,0,0] # [hours,minutes,seconds]
 
     interface = Interface.Interface(args)
     
@@ -27,11 +25,12 @@ def main(args):
         numframes = 1
         zeromask = True
 
-        zopt = Optimizer.Optimizer(args,interface)
+        zopt = Optimizer.Optimizer(args,interface)                
 
         # update zernike bestmask.txt for all zopt folders in dir.
         for root,dirs,files in os.walk(folder):
-            zdirs = [os.path.join(root,d) for d in dirs if 'compare' not in d and 'zopt' in d]
+            zdirs = [os.path.join(root,d) for d in dirs if 'compare' not in d
+                     and any([zz in d for zz in ['zopt','zspace']])]
             for zd in zdirs:
                 zd+= '/optimized_zmodes.txt'
                 if os.path.isfile(zd):
@@ -164,6 +163,12 @@ if __name__ == '__main__':
         help='Final mutation rate for genetic algorithm. DEFAULT=0.013'
     )
     parser.add_argument(
+        '--uniform_parent_prob',
+        type=float,
+        default=.1,
+        help='Probability of choosing uniform mask as parent during breeding. DEFAULT=0.1'
+    )
+    parser.add_argument(
         '--mutate_decay_factor',
         type=float,
         default=650,
@@ -182,6 +187,12 @@ if __name__ == '__main__':
         help='Fitness function to use for ranking masks. OPTIONS: "mean", "max", "spot". DEFAULT="max"'
     )
     parser.add_argument(
+        '--masktype',
+        type=str,
+        default='rect',
+        help='Mask type to use for genetic algoritym. OPTIONS: "rect", "zernike"  DEFAULT= "rect" '
+    )
+    parser.add_argument(
         '--save_path',
         type=str,
         default='oop_test',
@@ -194,6 +205,11 @@ if __name__ == '__main__':
         help='List of zernike coefficients for zernike modes 3-15. DEFAULT="0"'
     )
     parser.add_argument(
+        '--zernike_modes', nargs='*', type=int,
+        default=None,
+        help='List of zernike modes to be used for genetic algorithm with zernike masks. DEFAULT=None'
+    )
+    parser.add_argument(
         '--grating_step', type=int,
         default=0,
         help='Blazed grating slope. DEFAULT="0"'
@@ -203,5 +219,28 @@ if __name__ == '__main__':
         default=500,
         help='Number of uniform mask measurements to average over for initial metric values. DEFAULT="100"'
     )
+    try:
+        main(parser.parse_args())
+    except Exception as e:
+        print('caught error')
+        print(traceback.format_exc())
+        send_alert(message=str(e))
+        try:
+            with open(os.path.join(logfolder,'status.txt'),'a') as statusfile:
+                statusfile.write(str(time.strftime('-----------------------\n\n')))
+                statusfile.write(str(time.strftime("%a, %d %b %Y %H:%M:%S"))+'\n\n')
+                statusfile.write(str(e)+'\n')
+                statusfile.write(traceback.format_exc()+'\n')
+        except Exception as a:
+            send_alert(message=str(a))
+        
+    # run complete
+    send_alert(message='', subject='Lab430 Run Ended.')
+    try:
+        with open(os.path.join(logfolder,'status.txt'), 'a') as statusfile:
+            statusfile.write(str(time.strftime('-----------------------\n\n')))
+            statusfile.write(str(time.strftime("%a, %d %b %Y %H:%M:%S"))+'\n\n')
+            statusfile.write('Run Completed'+'\n')
+    except Exception as a:
+            send_alert(message=str(a)) 
 
-    main(parser.parse_args())
