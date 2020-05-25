@@ -36,7 +36,7 @@ class Optimizer:
     def init_metrics(self):
         self.metrics={'masks':[], 'roi':[], 'maxint':[], 'spot':[],'maxmet':[],'mean':[]}
     
-    def update_metrics(self, population=None, update_type='', save_mask=True, save_roi=True):
+    def update_metrics(self, population=None, update_type='save_best', save_mask=True, save_roi=True):
         if (update_type == 'final' or update_type == 'initial') and not (population is None):
             spot_metrics, mean_metrics, max_metrics, = [],[],[]
             for field in population.get_output_fields():
@@ -53,7 +53,20 @@ class Optimizer:
                 self.metrics['masks'].append(np.array(np.mean(masks,axis=0)).flatten())
             if save_roi:
                 self.metrics['roi'].append(np.mean(roi,axis=0))
-        else:
+                
+        elif update_type == 'save_all':
+            for field in population.get_output_fields():
+                self.metrics['spot'].append(population.fitness(field,'spot'))
+                self.metrics['maxint'].append(np.max(field))
+                self.metrics['maxmet'].append(population.fitness(field,'max'))
+                self.metrics['mean'].append(population.fitness(field,'mean'))
+                if save_roi:
+                    self.metrics['roi'].append(field)
+            if save_mask:
+                self.metrics['masks'].append(np.array(population.get_masks()).flatten())
+            
+            
+        elif update_type == 'save_best':
             population = self.parent_masks
             population.ranksort()
             field = population.get_output_fields()[-1]
@@ -66,7 +79,6 @@ class Optimizer:
             if save_roi:
                 self.metrics['roi'].append(field)
         if update_type == 'final':
-##            self.metrics['roi'][-1]=self.metrics['roi'][-2]
             if save_mask==True and len(self.metrics['masks'])>1:
                 self.metrics['masks'][-1]=self.metrics['masks'][-2]
 
