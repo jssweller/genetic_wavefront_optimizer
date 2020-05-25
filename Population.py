@@ -308,11 +308,12 @@ class Population:
             return np.sum(np.multiply(wroi,cen))
             
         if func == 'max':
-##            return max_metric(output_field)
-            return weighted_log_metric(max_metric(output_field),spot_metric(output_field))
+            return max_metric(output_field)
 
         if func == 'spot':
-            return spot_metric(output_field)
+##            return spot_metric(output_field)
+            return weighted_log_metric(max_metric(output_field),spot_metric(output_field))
+
 
         if func == 'mean':
             return np.mean(output_field)
@@ -321,8 +322,8 @@ class Population:
     
 def weighted_log_metric(maxmet,spotmet):
     maxmet = np.array(maxmet)
-    maxmet /= np.min(maxmet)
-    maxmet *= 10
+##    maxmet /= np.min(maxmet)
+##    maxmet *= 10
     spotmet = np.array(spotmet)
     return np.log(maxmet)*spotmet
 
