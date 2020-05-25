@@ -8,6 +8,7 @@ import win32file as wf
 import pyscreenshot as ImageGrab
 import time, datetime, sys, os, argparse, copy, __main__
 import datetime as dt
+from scipy.signal import medfilt
 
 import Interface, Population
 
@@ -202,6 +203,7 @@ class Optimizer:
             folder = self.save_path
         lenfolder = len(folder)
         folder = folder + '/compare_masks'+runid
+        
         idnum = 0
         f = folder
         
@@ -384,87 +386,42 @@ class Optimizer:
         self.final_log()
         self.save_plots()
         self.get_final_metrics()
-        
-    def run_zernike(self, zmodes, coeff_range, cumulative=True):
-        '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
-        print('Zernike optimizer running...')
-        best_zmodes = np.zeros(49)
-        self.args.zernike_coeffs = [0]
-        self.init_metrics()
-        args0 = copy.copy(self.args)
-        args0.num_masks=1
-##        args0.zernike_coeffs=[0]
-        args0.fitness_func = 'max'
-##        self.save_path=self.save_path+'/zernike'
-        initial_base_mask = copy.copy(self.base_mask)
-        base_mask = copy.copy(self.base_mask)
-        self.parent_masks = Population.Population(args0,base_mask)
-        self.get_initial_metrics(save_mask=False)
-        self.initial_zernike_log(zmodes,coeff_range)
-        
-        for zmode in zmodes:
-            if zmode<3 or zmode>=49:
-                print('Warning: Zernike mode number out of range(ignored). Number: '+str(zmode))
-                continue
-            print('\nOptimizing Zernike Mode',str(zmode))
-            # Course search
-            snum = 40
-            coeffs = np.arange(coeff_range[0],coeff_range[1]+1,snum)
-            best_coeff = self.get_best_coefficient(zmode, coeffs, 'max', shuffle=True)
-            
-            # Fine Search
-            fsnum = 2*snum
-            coeffs = np.arange(best_coeff-fsnum,best_coeff+fsnum,4)
-            best_coeff = self.get_best_coefficient(zmode, coeffs, shuffle=True)
 
-        
-            if cumulative:
-                base_mask += self.parent_masks.create_zernike_mask(self.get_coeff_list(zmode,best_coeff))
-            self.parent_masks.update_base_mask(base_mask)
-            best_zmodes += self.get_coeff_list(zmode,best_coeff)
-            self.save_checkpoint()
-            self.save_plots()
-
-        os.makedirs(self.save_path,exist_ok=True)
-        np.savetxt(self.save_path+'/optimized_zmodes.txt',best_zmodes, fmt='%d')
-        self.parent_masks.update_zernike_parent(best_zmodes)
-        self.parent_masks.update_base_mask(initial_base_mask)
-        self.interface.get_output_fields(self.parent_masks)
-        self.update_metrics(save_mask=True)
-        
-        self.save_checkpoint()
-        self.final_log()
-        self.save_plots()
-        self.get_final_metrics()
-        self.parent_masks.update_zernike_parent(best_zmodes)
-        self.parent_masks.update_base_mask(initial_base_mask)
-        self.save_path = args0.save_path
-
-    def run_zernike2(self, zmodes, coeff_range, num_runs=2, cumulative=True):
+    def run_zernike(self, zmodes, coeff_range, num_runs=2, cumulative=True):
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
         print('Zernike optimizer running...')
         self.args.zernike_coeffs = np.zeros(49)
-        
+        initial_base_mask = copy.copy(self.base_mask)
+        intial_save_path = self.save_path
 
-        for run in range(num_runs):                                        
+        run_start = 0
+        for d in sorted(next(os.walk(self.save_path))[1]):
+            if 'run' in d and os.path.isfile(os.path.join(self.save_path,d,'optimized_zmodes.txt')):
+                run_start = int(d.split('_')[1]) + 1
+
+        print('run start = ', run_start)
+        
+        for run in range(run_start,num_runs):
             self.init_metrics()
             args0 = copy.copy(self.args)
             args0.num_masks = 1
             args0.fitness_func = 'max'
-            initial_base_mask = copy.copy(self.base_mask)
-            base_mask = copy.copy(self.base_mask)
-            if run > 0:
-                zmodes_file = os.path.join(os.path.join(self.save_path,'run_'+str(run-1)),'optimized_zmodes.txt')
-            else:
-                zmodes_file = os.path.join(self.save_path,'optimized_zmodes.txt')
+            
+            base_mask = self.base_mask
+
+            zmodes_file = os.path.join(intial_save_path,'run_'+str(run-1),'optimized_zmodes.txt')
             if os.path.isfile(zmodes_file):
-                args0.zernike_coeffs = np.loadtxt(self.save_path+'/optimized_zmodes.txt')
-                self.save_path = os.path.join(self.save_path,'run_'+str(run))
-                os.makedirs(self.save_path, exist_ok=True)
+                args0.zernike_coeffs = np.loadtxt(zmodes_file)
+                print('loading optimized_zmodes', zmodes_file)
+                print(args0.zernike_coeffs)
+
+            self.save_path = os.path.join(intial_save_path,'run_'+str(run))
+            os.makedirs(self.save_path, exist_ok=True)
             
             self.parent_masks = Population.Population(args0,base_mask)
             self.get_initial_metrics(save_mask=False)
             self.initial_zernike_log(zmodes,coeff_range)
+            
 
             best_zmodes = np.zeros(49)
             for zmode in zmodes:
@@ -472,27 +429,40 @@ class Optimizer:
                     print('Warning: Zernike mode number out of range(ignored). Number: '+str(zmode))
                     continue
                 print('\nOptimizing Zernike Mode',str(zmode))
+
+                if self.parent_masks.zernike_coeffs[zmode] != 0:
+                    self.parent_masks.zernike_coeffs[zmode] = 0
+                    print(self.parent_masks.zernike_coeffs)
+
+                self.parent_masks.init_zernike_mask()
                 # Course search
-                snum = 40
+                snum = 10
                 coeffs = np.arange(coeff_range[0],coeff_range[1]+1,snum)
-                best_coeff = self.get_best_coefficient(zmode, coeffs, 'max', shuffle=True)
+                best_coeff, next_coeffs = self.get_best_coefficient(zmode, coeffs, method='argmax', metric='max', shuffle=True)
+                print('next_coeffs:', next_coeffs)
                 
                 # Fine Search
-                fsnum = 2*snum
-                coeffs = np.arange(best_coeff-fsnum,best_coeff+fsnum,4)
-                best_coeff = self.get_best_coefficient(zmode, coeffs, shuffle=True)
+##                snum = 4
+##                coeffs = np.arange(next_coeffs[0], next_coeffs[1]+1, snum)
+                num_coeffs = 100
+                coeffs = np.linspace(next_coeffs[0], next_coeffs[1]+1, num_coeffs, dtype=int)
+                best_coeff, next_coeffs = self.get_best_coefficient(zmode, coeffs, method='poly', metric='spot', repeat=1, shuffle=True)
             
                 if cumulative:
-                    base_mask += self.parent_masks.create_zernike_mask(self.get_coeff_list(zmode,best_coeff))
-                self.parent_masks.update_base_mask(base_mask)
+                    self.parent_masks.zernike_coeffs[zmode] = best_coeff
+
                 best_zmodes += self.get_coeff_list(zmode,best_coeff)
                 self.save_checkpoint()
                 self.save_plots()
 
-            os.makedirs(self.save_path,exist_ok=True)
-            best_zmodes += args0.zernike_coeffs
+            if best_zmodes != self.parent_masks.zernike_coeffs:
+                print('best_zmodes doesn\'t match zernike_coeffs!')
+                print('best_zmodes:', best_zmodes)
+                print('self.parent_masks.zernike_coeffs', self.parent_masks.zernike_coeffs)
+                
             np.savetxt(os.path.join(self.save_path,'optimized_zmodes.txt'),best_zmodes , fmt='%d')
-            self.parent_masks.update_zernike_parent(best_zmodes)
+            self.parent_masks.init_zernike_mask()
+            self.parent_masks.update_zernike_parent(np.zeros(49))
             self.parent_masks.update_base_mask(initial_base_mask)
             self.interface.get_output_fields(self.parent_masks)
             self.update_metrics(save_mask=True)
@@ -501,8 +471,6 @@ class Optimizer:
             self.final_log()
             self.save_plots()
             self.get_final_metrics()
-            self.parent_masks.update_zernike_parent(best_zmodes)
-            self.parent_masks.update_base_mask(initial_base_mask)
             self.save_path = args0.save_path
 
     def map_zspace(self, zmodes, coeff_range, repeat=10, cumulative=True):
@@ -599,10 +567,10 @@ class Optimizer:
         return cfs
 
     
-    def get_best_coefficient(self, zmode, coeffs, method='poly', repeat=10, record_all_data=False, shuffle=False, save_roi=False):
+    def get_best_coefficient(self, zmode, coeffs, method='poly', metric='max', repeat=1, record_all_data=False, shuffle=True, save_roi=True):
         maxmets=[]
         spotmets=[]
-        print('coeff',end='')
+        print('\ncoeff',end='')
         
         repcoeffs = []
         for i in range(repeat):
@@ -618,30 +586,55 @@ class Optimizer:
                 maxmets.append(self.metrics['maxmet'][-1])
                 spotmets.append(self.metrics['spot'][-1])
 
+        repcoeffs = np.array(repcoeffs).flatten()
+        srt_idxs = np.argsort(repcoeffs)
         for met, metlist in self.metrics.items():
             if not save_roi and 'roi' in met:
                     continue
             if 'mask' in met:
                 continue
             sortvals = metlist[-len(repcoeffs):]
-            metlist[-len(repcoeffs):] = [sortvals[zz] for zz in np.argsort(repcoeffs)]
+            metlist[-len(repcoeffs):] = [sortvals[zz] for zz in srt_idxs]
         print('\n')
 
+        print('repcoeffs shape:', repcoeffs.shape)
+        print('sort indexes shape:', srt_idxs.shape)
+        coeffs = repcoeffs[srt_idxs]
+        maxmets = np.array(maxmets)[srt_idxs]
+        spotmets = np.array(spotmets)[srt_idxs]
+        print('coeffs sorted?', all(np.argsort(coeffs) == np.arange(len(coeffs))))
         if method == 'poly':
-            max_coeff = get_polybest(coeffs, maxmets, np.argmax)
-            spot_coeff = get_polybest(coeffs, spotmets, np.argmax)
-##            best_coeff = int((max_coeff+spot_coeff)/2)
-            best_coeff = int(max_coeff)
-        elif method == 'max':
+            print('\n poly max')
+            max_coeff = get_polybest(coeffs, maxmets, np.argmax, plot=True, plotfolder=self.save_path, plotname='zmode_'+str(zmode)+'_max')
+            print('\n poly spot')
+            spot_coeff = get_polybest(coeffs, spotmets, np.argmax, plot=True, plotfolder=self.save_path, plotname='zmode_'+str(zmode)+'_spot')
+            if metric == 'max':
+                best_coeff = int(max_coeff)
+            elif metric == 'spot':
+                best_coeff = int(spot_coeff)
+
+        elif method == 'argmax':
             max_coeff = np.argmax(maxmets)
             spot_coeff = np.argmax(spotmets)
-            best_coeff = coeffs[max_coeff]
+            if metric == 'max':
+                best_coeff = coeffs[max_coeff]
+            elif metric == 'spot':
+                best_coeff = coeffs[spot_coeff]
         
         
 ##        if isinstance(best_coeff,np.ndarray):
 ##            best_coeff = best_coeff[-1]
 ##        return coeffs[best_coeff]
-        return best_coeff
+        print('best_coeff:', best_coeff, '\t best_coeff intensity:', maxmets[np.argmin(np.abs(coeffs - best_coeff))], '\t method:', method)
+        print('maxmets max:', np.max(maxmets), '\t argmax coeff:', coeffs[np.argmax(maxmets)])
+
+        if metric == 'max':
+            xthresh_idxs = get_xthresh_idxs(coeffs, medfilt(maxmets, 3), thresh=0.7)
+        elif metric == 'spot':
+            xthresh_idxs = get_xthresh_idxs(coeffs, medfilt(spotmets, 3), thresh=0.7)
+
+        next_coeffs = coeffs[xthresh_idxs]
+        return best_coeff, next_coeffs
 
     
     def initial_log(self):
@@ -774,39 +767,41 @@ class Optimizer:
         plt.savefig(fdir+'/spot_metric_plot')
         plt.close()
 
-        dim=int(np.sqrt(len(self.metrics['roi'][0])))
-        plt.figure()
-        plt.imshow(np.array(self.metrics['roi'][-2]).reshape(dim,dim))
-        plt.xticks([])
-        plt.yticks([])
-        plt.colorbar()
-        plt.savefig(fdir+'/end_roi')
-        plt.close()
+        if len(self.metrics['roi']) > 1:
+            dim=int(np.sqrt(len(self.metrics['roi'][0])))
+            plt.figure()
+            plt.imshow(np.array(self.metrics['roi'][-2]).reshape(dim,dim))
+            plt.xticks([])
+            plt.yticks([])
+            plt.colorbar()
+            plt.savefig(fdir+'/end_roi')
+            plt.close()
 
-        dim=int(np.sqrt(len(self.metrics['roi'][0])))
-        plt.figure()
-        plt.imshow(np.array(self.metrics['roi'][-1]).reshape(dim,dim))
-        plt.xticks([])
-        plt.yticks([])
-        plt.colorbar()
-        plt.savefig(fdir+'/end_roi_averaged')
-        plt.close()
+            plt.figure()
+            plt.imshow(np.array(self.metrics['roi'][1]).reshape(dim,dim))
+            plt.xticks([])
+            plt.yticks([])
+            plt.colorbar()
+            plt.savefig(fdir+'/begin_roi')
+            plt.close()
 
-        plt.figure()
-        plt.imshow(np.array(self.metrics['roi'][1]).reshape(dim,dim))
-        plt.xticks([])
-        plt.yticks([])
-        plt.colorbar()
-        plt.savefig(fdir+'/begin_roi')
-        plt.close()
-        
-        plt.figure()
-        plt.imshow(np.array(self.metrics['roi'][0]).reshape(dim,dim))
-        plt.xticks([])
-        plt.yticks([])
-        plt.colorbar()
-        plt.savefig(fdir+'/begin_roi_averaged')
-        plt.close()
+        if len(self.metrics['roi']) > 0:
+            dim=int(np.sqrt(len(self.metrics['roi'][0])))
+            plt.figure()
+            plt.imshow(np.array(self.metrics['roi'][-1]).reshape(dim,dim))
+            plt.xticks([])
+            plt.yticks([])
+            plt.colorbar()
+            plt.savefig(fdir+'/end_roi_averaged')
+            plt.close()
+
+            plt.figure()
+            plt.imshow(np.array(self.metrics['roi'][0]).reshape(dim,dim))
+            plt.xticks([])
+            plt.yticks([])
+            plt.colorbar()
+            plt.savefig(fdir+'/begin_roi_averaged')
+            plt.close()
 
         plt.figure(figsize=(12,8))
         bmask = np.array(self.parent_masks.get_slm_masks()[-1],dtype=np.uint8)
@@ -844,26 +839,51 @@ def get_mask_compare_list(directory,names=['bestmask'],write_to_file=True):
                     f.write(m+'\n')
         return maskfiles
 
-def get_polybest(x,y,best_func=np.argmax, deg=4):
+def get_polybest(x,y,best_func=np.argmax, deg=4, plot=False, plotfolder=None, plotname=None):
     if best_func == np.argmin:
         y = 1/y
         best_func = np.argmax
 
-    xthresh_idxs = get_xthresh_idxs(x,y)
+    yfilt = medfilt(y, 5)
+    xthresh_idxs = get_xthresh_idxs(x, yfilt)
+    print('xthresh = ', xthresh_idxs , '\t diff', xthresh_idxs[0]-xthresh_idxs[1])
     pfit = np.polyfit(x[xthresh_idxs[0]:xthresh_idxs[1]],y[xthresh_idxs[0]:xthresh_idxs[1]],deg)
     p = np.poly1d(pfit)
-    frange = np.arange(min(x),max(x),1)
+    frange = np.arange(x[xthresh_idxs[0]],x[xthresh_idxs[1]],1)
     zbest = best_func(p(frange))
+    print('zbest_idx:',zbest, '\t zbest_coeff:', int(frange[zbest]))
+    print('len frange:', frange.shape)
+    best_coeff = int(frange[zbest])
+
+    if plot:
+        plt.figure()
+        plt.scatter(x, y, s=20, label='data')
+        plt.plot(x, yfilt, lw=1, c='g', ls='-', label='filtered_data')
+        plt.plot(frange, p(frange), c='k', lw=2, ls = '-', label='fit')
+        plt.plot([best_coeff,best_coeff],[plt.ylim()[0],p(best_coeff)], c='r', lw=2, ls='--', label='best')
+        plt.legend()
+        plt.savefig(os.path.join(plotfolder,plotname+'.png'))
+        plt.close()
     return int(frange[zbest])
 
 
-def get_xthresh_idxs(x,y,thresh=0.8):
+def get_xthresh_idxs(x,y,thresh=0.7):
     '''Return the x indices where the function has decreased to the threshold from the max.'''
     ymax = np.max(y)
     ymaxidx = np.argmax(y)
-    xcoeff = x[ymaxidx]
+    
+##    ymin = np.min(y)
+##    ylimval = (ymax-ymin)*thresh + ymin
     ylimval = ymax*thresh
-    idxleft = np.argmin(np.abs(y[:ymaxidx]-ylimval))
-    idxright = np.argmin(np.abs(y[ymaxidx:]-ylimval))+ymaxidx
+    if ymaxidx > 0:
+        idxleft = np.argmin(np.abs(y[:ymaxidx]-ylimval))
+    else:
+        idxleft = 0
+
+    if ymaxidx < len(y)-1:
+        idxright = np.argmin(np.abs(y[ymaxidx:]-ylimval))+ymaxidx
+    else:
+        idxright = ymaxidx
+    
     return [idxleft,idxright]
     
