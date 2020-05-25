@@ -455,7 +455,7 @@ class Optimizer:
                 self.save_checkpoint()
                 self.save_plots()
 
-            if best_zmodes != self.parent_masks.zernike_coeffs:
+            if not all(best_zmodes == self.parent_masks.zernike_coeffs):
                 print('best_zmodes doesn\'t match zernike_coeffs!')
                 print('best_zmodes:', best_zmodes)
                 print('self.parent_masks.zernike_coeffs', self.parent_masks.zernike_coeffs)
