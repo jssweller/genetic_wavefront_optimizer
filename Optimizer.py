@@ -36,7 +36,7 @@ class Optimizer:
     def init_metrics(self):
         self.metrics={'masks':[], 'roi':[], 'maxint':[], 'spot':[],'maxmet':[],'mean':[]}
     
-    def update_metrics(self, population=None, update_type='save_best', save_mask=True, save_roi=True):
+    def update_metrics(self, population=None, update_type='', save_mask=True, save_roi=True):
         if (update_type == 'final' or update_type == 'initial') and not (population is None):
             spot_metrics, mean_metrics, max_metrics, = [],[],[]
             for field in population.get_output_fields():
@@ -53,20 +53,7 @@ class Optimizer:
                 self.metrics['masks'].append(np.array(np.mean(masks,axis=0)).flatten())
             if save_roi:
                 self.metrics['roi'].append(np.mean(roi,axis=0))
-                
-        elif update_type == 'save_all':
-            for field in population.get_output_fields():
-                self.metrics['spot'].append(population.fitness(field,'spot'))
-                self.metrics['maxint'].append(np.max(field))
-                self.metrics['maxmet'].append(population.fitness(field,'max'))
-                self.metrics['mean'].append(population.fitness(field,'mean'))
-                if save_roi:
-                    self.metrics['roi'].append(field)
-            if save_mask:
-                self.metrics['masks'].append(np.array(population.get_masks()).flatten())
-            
-            
-        elif update_type == 'save_best':
+        else:
             population = self.parent_masks
             population.ranksort()
             field = population.get_output_fields()[-1]
@@ -79,6 +66,7 @@ class Optimizer:
             if save_roi:
                 self.metrics['roi'].append(field)
         if update_type == 'final':
+##            self.metrics['roi'][-1]=self.metrics['roi'][-2]
             if save_mask==True and len(self.metrics['masks'])>1:
                 self.metrics['masks'][-1]=self.metrics['masks'][-2]
 
@@ -380,7 +368,9 @@ class Optimizer:
         self.gen=1
         self.reset_time()
         self.init_metrics()
+        print('Get initial metrics...', end='')
         self.get_initial_metrics()
+        print('...done')
         self.initial_log()
         self.reset_time()
         while self.gen <= numgens:
@@ -407,6 +397,7 @@ class Optimizer:
         intial_save_path = self.save_path
 
         run_start = 0
+        os.makedirs(self.save_path, exist_ok=True)
         for d in sorted(next(os.walk(self.save_path))[1]):
             if 'run' in d and os.path.isfile(os.path.join(self.save_path,d,'optimized_zmodes.txt')):
                 run_start = int(d.split('_')[1]) + 1
@@ -419,7 +410,7 @@ class Optimizer:
             args0.num_masks = 1
             args0.fitness_func = 'max'
             
-            base_mask = self.base_mask
+            base_mask = initial_base_mask
 
             zmodes_file = os.path.join(intial_save_path,'run_'+str(run-1),'optimized_zmodes.txt')
             if os.path.isfile(zmodes_file):
@@ -458,7 +449,7 @@ class Optimizer:
 ##                coeffs = np.arange(next_coeffs[0], next_coeffs[1]+1, snum)
                 num_coeffs = 100
                 coeffs = np.linspace(next_coeffs[0], next_coeffs[1]+1, num_coeffs, dtype=int)
-                best_coeff, next_coeffs = self.get_best_coefficient(zmode, coeffs, method='poly', metric='spot', repeat=1, shuffle=True)
+                best_coeff, next_coeffs = self.get_best_coefficient(zmode, coeffs, method='poly', metric='max', repeat=1, shuffle=True)
             
                 if cumulative:
                     self.parent_masks.zernike_coeffs[zmode] = best_coeff
@@ -466,11 +457,6 @@ class Optimizer:
                 best_zmodes += self.get_coeff_list(zmode,best_coeff)
                 self.save_checkpoint()
                 self.save_plots()
-
-            if not all(best_zmodes == self.parent_masks.zernike_coeffs):
-                print('best_zmodes doesn\'t match zernike_coeffs!')
-                print('best_zmodes:', best_zmodes)
-                print('self.parent_masks.zernike_coeffs', self.parent_masks.zernike_coeffs)
                 
             np.savetxt(os.path.join(self.save_path,'optimized_zmodes.txt'),best_zmodes , fmt='%d')
             self.parent_masks.init_zernike_mask()
@@ -606,6 +592,8 @@ class Optimizer:
             if 'mask' in met:
                 continue
             sortvals = metlist[-len(repcoeffs):]
+            print('srt_idxs length', len(srt_idxs))
+            print('sortvals length', len(sortvals))
             metlist[-len(repcoeffs):] = [sortvals[zz] for zz in srt_idxs]
         print('\n')
 

@@ -45,7 +45,6 @@ class Interface:
         roi_list = []
         for i,mask in enumerate(input_masks):
             take_picture = (i>0)
-            print('i:', i, 'takepic:',take_picture)
             pre_mask = attach_prefix(mask, take_picture)
             pre_mask = self.encode_mask(pre_mask)
             for j in range(repeat):
@@ -54,29 +53,26 @@ class Interface:
                     pre_mask = self.encode_mask(blank_mask)
 
                 wf.WriteFile(self.pipe_handle_out, pre_mask)
-                if j > 0:
+                if j+i > 0:
                     read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
                     read_array = list(read_pipe[1])
                     roi_list.append(read_array[0::3])
             # If using new labview code run this block
-            blank_mask = np.zeros(1)
-            pre_mask = self.encode_mask(blank_mask)
-            wf.WriteFile(self.pipe_handle_out, pre_mask)
-            read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
-            read_array = list(read_pipe[1])
-            roi_list.append(read_array[0::3])
+        blank_mask = np.zeros(1)
+        pre_mask = self.encode_mask(blank_mask)
+        wf.WriteFile(self.pipe_handle_out, pre_mask)
+        read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
+        read_array = list(read_pipe[1])
+        roi_list.append(read_array[0::3])
         
         population.update_output_fields(roi_list)
 
 def attach_prefix(mask, take_picture=True, load_slm=True):
         prefix = np.ones(2)
-                
         if not take_picture:
             prefix[0] = 0
-
         if not load_slm:
             prefix[1] = 0
 
-        
         mask = np.insert(mask, 0, prefix).flatten()
         return mask

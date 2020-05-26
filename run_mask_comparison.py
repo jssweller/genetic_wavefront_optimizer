@@ -5,15 +5,15 @@ import time, datetime, sys, os, argparse, copy, shutil, traceback
 
 import Optimizer, Interface, Population, textwrap
 
-logfolder = r'Z:\118_data\map_zspacelab118_calibrated_independent_runs\test_calibration2'
+logfolder = r'Z:\118_data\delay_test'
 
 def main(args):
 
-    folders = [r'Z:\118_data\map_zspacelab118_calibrated_independent_runs\test_calibration2'
+    folders = [r'Z:\118_data\delay_test'
                ]
     
     start_time = [0,0,0] # [hour,minute,add days]
-    run_time = [2,0,0] # [hours,minutes,seconds]
+    run_time = [0,10,0] # [hours,minutes,seconds]
 
     interface = Interface.Interface(args)
     
