@@ -41,44 +41,42 @@ class Interface:
         """Transmit mask pixel data through pipe to apparatus. Return list of output field ROIs."""      
         t0=time.time()
         input_masks = population.get_slm_masks()
-##        print('\n\nget masks:',np.shape(input_masks),np.round(time.time()-t0,10))
-##        t0=time.time()
         
         roi_list = []
-##        print(np.shape(input_masks))
-##        print('sending...',end='')
-##        write_times = []
-##        encode_time = []
-##        read_times = []
         for i,mask in enumerate(input_masks):
-##            t1=time.time()
-            mask = self.encode_mask(mask)
-##            encode_time.append(time.time()-t1)
+            take_picture = (i>0)
+            print('i:', i, 'takepic:',take_picture)
+            pre_mask = attach_prefix(mask, take_picture)
+            pre_mask = self.encode_mask(pre_mask)
             for j in range(repeat):
-                if (j+1)%50 == 0:
-                    print(j, '.....\t',time.time()-t0)
-##                t1 = time.time()
-                wf.WriteFile(self.pipe_handle_out, mask)
-##                write_times.append(time.time()-t1)
-##                t1 = time.time()
-                read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
-##                read_times.append(time.time()-t1)
-                read_array = list(read_pipe[1])
-                roi_list.append(read_array[0::3])
-        # If using new labview code run this block
-        mask = self.encode_mask(input_masks[-1])
-        wf.WriteFile(self.pipe_handle_out, mask)
-        read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
-        read_array = list(read_pipe[1])
-        roi_list.append(read_array[0::3])
-        population.update_output_fields(roi_list[1:])
-                    
-##        print('.... Interface Time (seconds):', time.time()-t0)
-##        print('write_time', np.sum(write_times))
-##        print('read_time', np.sum(read_times))
-##        print('encode_time', np.sum(encode_time))
-        
+                if j == 1:
+                    blank_mask = np.zeros(1) # blank mask means take picture, but don't re-load slm
+                    pre_mask = self.encode_mask(blank_mask)
 
-##        population.update_output_fields(roi_list)
+                wf.WriteFile(self.pipe_handle_out, pre_mask)
+                if j > 0:
+                    read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
+                    read_array = list(read_pipe[1])
+                    roi_list.append(read_array[0::3])
+            # If using new labview code run this block
+            blank_mask = np.zeros(1)
+            pre_mask = self.encode_mask(blank_mask)
+            wf.WriteFile(self.pipe_handle_out, pre_mask)
+            read_pipe = wf.ReadFile(self.pipe_handle_in, self.get_buffer_size())
+            read_array = list(read_pipe[1])
+            roi_list.append(read_array[0::3])
         
-    
+        population.update_output_fields(roi_list)
+
+def attach_prefix(mask, take_picture=True, load_slm=True):
+        prefix = np.ones(2)
+                
+        if not take_picture:
+            prefix[0] = 0
+
+        if not load_slm:
+            prefix[1] = 0
+
+        
+        mask = np.insert(mask, 0, prefix).flatten()
+        return mask
