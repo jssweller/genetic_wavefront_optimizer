@@ -5,15 +5,15 @@ import time, datetime, sys, os, argparse, copy, shutil, traceback
 
 import Optimizer, Interface, Population, textwrap
 
-logfolder = r'Z:\118_data\delay_test'
+logfolder = r'Z:\118_data\run_5-22-20_118test_ND3'
 
 def main(args):
 
-    folders = [r'Z:\118_data\delay_test'
+    folders = [r'Z:\118_data\run_5-22-20_118test_ND3'
                ]
     
     start_time = [0,0,0] # [hour,minute,add days]
-    run_time = [0,10,0] # [hours,minutes,seconds]
+    run_time = [4,0,0] # [hours,minutes,seconds]
 
     interface = Interface.Interface(args)
     
