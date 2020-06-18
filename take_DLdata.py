@@ -1,4 +1,5 @@
 import numpy as np
+from alerts import send_alert
 import win32pipe as wp
 import win32file as wf
 import matplotlib.pyplot as plt
@@ -7,17 +8,21 @@ import time, datetime, sys, os, argparse, copy, shutil
 
 import Optimizer, Interface, Population, textwrap
 
+start_num = 'DLdata_c128_z3-35_112x112_1m_200_centered'
+folder = 'Z:/118_data/DL_data/'+start_num
 
-def main(args):
-    start_num = 'DLdata_c400_z1-9_112x112_100k'
+
+def main(args,folder):
+    overwrite_data = False
+    
     run_description = 'Simulated aberrations and images for Deep Learning Training \n\
+Lab 118. \n\
 112x112 image dimensions. \n\
-Zernike Polynomials 1-9. \n\
+Zernike Polynomials 1-35. \n\
 Fully randomized aberration generation. \n\
 Zernike optimization using corrected scaling. \n\
-zbasis = False. \n\
+zbasis = True. \n\
 Exposure value at -6.'
-    folder = '../run_'+str(start_num)
     os.makedirs(folder,exist_ok=True)
     shutil.copy(sys.argv[0],folder+'/mainscript.py')
     shutil.copystat(sys.argv[0],folder+'/mainscript.py')
@@ -27,36 +32,40 @@ Exposure value at -6.'
     file.write('Description: '+run_description+'\n\n')
     file.close()
     interface = Interface.Interface(args)
+
+    args.num_initial_metrics = 10
     args0 = copy.copy(args)
     
     
     optimize_zernike = True
-    
+   
     zopt_mask = 0
     if optimize_zernike:
         args = copy.copy(args0)
-        args.save_path = folder+'/zopt'
-        zopt = Optimizer.Optimizer(args,interface)
-        zmodes = np.arange(3,16)
+##        args.save_path = folder+'/zopt'
+        args.save_path = folder[:folder.rfind('DL_data')+len('DL_data')]
+        zmodes = np.arange(3,49)
         zopt = Optimizer.Optimizer(args,interface)
         if os.path.isfile(args.save_path+'/optimized_zmodes.txt'):
+            print('Loading zmodes from file...')
             opt_zmodes = np.loadtxt(args.save_path+'/optimized_zmodes.txt')
             print(opt_zmodes)
             zopt_mask = zopt.parent_masks.create_zernike_mask(opt_zmodes)
             print(zopt_mask.shape)
         else:
+            args.save_path = folder+'/zopt'
             zopt.run_zernike(zmodes,[-600,600])
             zopt_mask = zopt.parent_masks.get_slm_masks()[-1]
     
-    coeff_range = [-400,400]
-    DLmodes = np.arange(1,10)
-    num_data = 500000
+    coeff_range = [-128,128]
+    DLmodes = np.arange(1,36)
+    num_data = 1000000
     batch_size = 1000
 
     args = copy.copy(args0)
     args.save_path = folder+'/DLdata'
     DLopt = Optimizer.Optimizer(args,interface,base_mask=zopt_mask)
-    DLopt.record_DLdata(DLmodes, coeff_range, num_data, batch_size)
+    DLopt.record_DLdata(DLmodes, coeff_range, num_data, batch_size, overwrite=overwrite_data)
                 
                  
     print('\n\nDONE with zernike optimization............\n\n')
@@ -215,8 +224,35 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--num_initial_metrics', type=int,
-        default=500,
+        default=50,
         help='Number of uniform mask measurements to average over for initial metric values. DEFAULT="100"'
     )
 
-    main(parser.parse_args())
+    main_error = False    
+    try:
+        main(parser.parse_args(), folder)
+    except Exception as e:
+        print('caught error')
+        main_error = True
+        send_alert(message=str(e))
+        try:
+            with open(os.path.join(folder,'status.txt'),'a') as statusfile:
+                statusfile.write(str(time.strftime('-----------------------\n\n')))
+                statusfile.write(str(time.strftime("%a, %d %b %Y %H:%M:%S"))+'\n\n')
+                statusfile.write(str(e)+'\n')
+                statusfile.write(traceback.format_exc()+'\n')
+                print(traceback.format_exc())
+        except Exception as a:
+            send_alert(message=str(a))
+        
+    # run complete
+    if not main_error:
+        send_alert(message='Lab 118 Run ended without error.', subject='Lab 118 Run Completed Without Error.')
+        try:
+            with open(os.path.join(folder,'status.txt'), 'a') as statusfile:
+                statusfile.write(str(time.strftime('-----------------------\n\n')))
+                statusfile.write(str(time.strftime("%a, %d %b %Y %H:%M:%S"))+'\n\n')
+                statusfile.write('Run Completed'+'\n')
+        except Exception as a:
+                send_alert(message=str(a)) 
+
