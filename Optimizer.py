@@ -37,6 +37,9 @@ class Optimizer:
         self.metrics={'masks':[], 'roi':[], 'maxint':[], 'spot':[],'maxmet':[],'mean':[]}
     
     def update_metrics(self, population=None, update_type='', save_mask=True, save_roi=True):
+        if population is None:
+            population = self.parent_masks
+            
         if (update_type == 'final' or update_type == 'initial') and not (population is None):
             spot_metrics, mean_metrics, max_metrics, = [],[],[]
             for field in population.get_output_fields():
@@ -53,6 +56,11 @@ class Optimizer:
                 self.metrics['masks'].append(np.array(np.mean(masks,axis=0)).flatten())
             if save_roi:
                 self.metrics['roi'].append(np.mean(roi,axis=0))
+
+        elif update_type == 'roi_only':
+            roi = population.get_output_fields()
+            self.metrics['roi'] += roi
+
         else:
             population = self.parent_masks
             population.ranksort()
@@ -65,6 +73,7 @@ class Optimizer:
                 self.metrics['masks'].append(np.array(population.get_masks()[-1]).flatten())
             if save_roi:
                 self.metrics['roi'].append(field)
+
         if update_type == 'final':
 ##            self.metrics['roi'][-1]=self.metrics['roi'][-2]
             if save_mask==True and len(self.metrics['masks'])>1:
@@ -77,14 +86,17 @@ class Optimizer:
         return datetime.timedelta(seconds=time.time()-self.time_start)
         
     def get_initial_metrics(self, save_mask=True, save_roi=True):
+        print('Getting initial metrics...')
         args0 = copy.copy(self.args)
         args0.zernike_coeffs = [0]
         args0.num_masks = 1
+        args0.masktype = 'rect'
         uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
         self.interface.get_output_fields(uniform_pop,repeat=self.num_masks_initial_metrics)
         self.update_metrics(uniform_pop, 'initial',save_mask=save_mask, save_roi=save_roi)
         os.makedirs(self.save_path, exist_ok=True)
         np.savetxt(self.save_path+'/initial_mean_intensity_roi.txt', uniform_pop.get_output_fields(), fmt='%d')
+        print('...done')
         
     def get_final_metrics(self):
         print('\nGetting final metrics...\n')
@@ -460,7 +472,7 @@ class Optimizer:
                 
             np.savetxt(os.path.join(self.save_path,'optimized_zmodes.txt'),best_zmodes , fmt='%d')
             self.parent_masks.init_zernike_mask()
-            self.parent_masks.update_zernike_parent(np.zeros(49))
+            self.parent_masks.update_zernike_parents(np.zeros(49))
             self.parent_masks.update_base_mask(initial_base_mask)
             self.interface.get_output_fields(self.parent_masks)
             self.update_metrics(save_mask=True)
@@ -517,35 +529,67 @@ class Optimizer:
         self.save_path = args0.save_path
 
 
-    def record_DLdata(self, zmodes, coeff_range, num_data, batch_size=1000):
+    def record_DLdata(self, zmodes, coeff_range, num_data, batch_size=1000, overwrite=True):
         '''Randomly loads zernike aberrations to SLM and records coefficient vector and ROI'''
         print('Recording Deep Learning data...')
         zlist = []
         self.init_metrics()
         self.args.zernike_coeffs=[0]
+        self.get_initial_metrics(save_mask=False)
+##        self.save_checkpoint()
+        self.save_plots()
+        
         args0 = copy.copy(self.args)
         args0.num_masks=1
-        self.parent_masks = Population.Population(args0,self.base_mask)
+        self.parent_masks = Population.Population(args0,self.base_mask, uniform=True)
+        self.init_metrics()
         self.initial_zernike_log(zmodes,coeff_range)
-
+        
         zmodes = np.arange(max(1,min(zmodes)),min(49,max(zmodes)))
         coeff_range = np.arange(coeff_range[0],coeff_range[1]+1)
-        for i in range(num_data+1):
-            numps = np.arange(0,max(zmodes.shape)+1)
-            p = (numps+0.1)**(1/1.5) # probability dist for choosing number of polynomials
-            c_numps = np.random.choice(numps,size=1, p=p/sum(p)) # randomly choose number of polynomials in aberration
-            c_zmodes = np.random.choice(zmodes, c_numps, replace=False) # choose polynomials
-            coeffs = np.random.choice(coeff_range, c_numps, replace=True) # choose coefficients
-            clist = self.get_coeff_list(c_zmodes,coeffs) # get formatted coefficient list
-            os.makedirs(self.save_path,exist_ok=True)
-            zlist.append(clist)
-            
-            self.parent_masks.update_zernike_parent(clist)
-            self.interface.get_output_fields(self.parent_masks)
-            self.update_metrics(update_type='initial',save_mask=False)
 
-            if (i+1)%batch_size==0 or (i+1)==num_data:
-                savenum = i+1
+        numps = np.arange(0,max(zmodes.shape)+1)
+        p = (numps+0.1)**(1/1.5) # probability dist for choosing number of polynomials
+        p = p/sum(p)
+        
+        t0 = time.time()
+        tbatch = time.time()
+
+        i=0
+        send_to_slm = 100
+
+        if not overwrite:
+            print('Checking for existing data to avoid overwriting')
+            folders = sorted(next(os.walk(self.save_path))[1], key= lambda x: int(x[x.rfind('data')+4:]))
+            if len(folders)>0:
+                batch_size = int(folders[0][folders[0].rfind('data')+4:])
+                if len(folders) > 1:
+                    batch_size = int(folders[1][folders[1].rfind('data')+4:]) - batch_size
+                print('Using batch_size of previous data:', batch_size)
+                for d in folders:
+                    if os.path.isfile(os.path.join(self.save_path,d,'zcoeffs.txt')):
+                        i = int(d[d.rfind('data')+4:])
+                
+        print('starting with i =',i)
+        while i <= num_data:
+            num_send = min(send_to_slm, batch_size - (i % batch_size))
+            i += num_send
+            for b in range(num_send):
+                c_numps = np.random.choice(numps,size=1, p=p) # randomly choose number of polynomials in aberration
+                c_zmodes = np.random.choice(zmodes, c_numps, replace=False) # choose polynomials
+                coeffs = np.random.choice(coeff_range, c_numps, replace=True) # choose coefficients
+                clist = self.get_coeff_list(c_zmodes,coeffs) # get formatted coefficient list
+                zlist.append(clist)
+
+            self.parent_masks.update_zernike_parents(zlist[-num_send:])
+            self.interface.get_output_fields(self.parent_masks)
+            self.update_metrics(update_type='roi_only', save_mask=False)
+
+            if  i % batch_size==0 or i==num_data:
+                print('\nBatch '+str(int((i+1)/batch_size)), '\nTotal Time:\t\t',time.time()-t0)
+                print('Batch Time:\t\t', time.time()-tbatch)
+                print('Time per mask:\t\t', (time.time()-tbatch)/batch_size)
+                savenum = i
                 self.save_path = os.path.join(args0.save_path,'data'+str(savenum))
                 os.makedirs(self.save_path,exist_ok=True)
                 self.save_checkpoint(append=True, roi_only=True)
@@ -554,6 +598,8 @@ class Optimizer:
                 zfile.close()
                 self.init_metrics()
                 zlist = []
+                
+                tbatch = time.time()
                 
     
     def get_coeff_list(self,zmodes,coeffs):
@@ -577,7 +623,7 @@ class Optimizer:
             repcoeffs.append(coeffs)
             for i,coeff in enumerate(coeffs):
                 print('...'+str(coeff),end='')
-                self.parent_masks.update_zernike_parent(self.get_coeff_list(zmode,coeff))
+                self.parent_masks.update_zernike_parents(self.get_coeff_list(zmode,coeff))
 
                 self.interface.get_output_fields(self.parent_masks)
                 self.update_metrics(update_type='initial',save_mask=False, save_roi=save_roi)
@@ -689,8 +735,9 @@ class Optimizer:
                  '/roi.txt',
                  '/masks.txt']
 
-        mode = 'w'
-        if append: mode = 'a'
+        mode = 'w+'
+        if append:
+            mode = 'a'
         
         f = []
 
@@ -746,26 +793,30 @@ class Optimizer:
             self.load_checkpoint()
         if fdir is None:
             fdir = self.save_path
-            
-        plt.figure()
-        plt.plot(self.metrics['maxmet'])
-        plt.savefig(fdir+'/max_metric_plot')
-        plt.close()
 
-        plt.figure()
-        plt.plot(self.metrics['maxint'])
-        plt.savefig(fdir+'/max_intensity_plot')
-        plt.close()
+        if len(self.metrics['maxmet']) > 1:
+            plt.figure()
+            plt.plot(self.metrics['maxmet'])
+            plt.savefig(fdir+'/max_metric_plot')
+            plt.close()
 
-        plt.figure()
-        plt.plot(self.metrics['mean'])
-        plt.savefig(fdir+'/mean_intensity_plot')
-        plt.close()
+        if len(self.metrics['maxint']) > 1:
+            plt.figure()
+            plt.plot(self.metrics['maxint'])
+            plt.savefig(fdir+'/max_intensity_plot')
+            plt.close()
 
-        plt.figure()
-        plt.plot(1/np.asarray(self.metrics['spot']))
-        plt.savefig(fdir+'/spot_metric_plot')
-        plt.close()
+        if len(self.metrics['mean']) > 1:
+            plt.figure()
+            plt.plot(self.metrics['mean'])
+            plt.savefig(fdir+'/mean_intensity_plot')
+            plt.close()
+
+        if len(self.metrics['spot']) > 1:
+            plt.figure()
+            plt.plot(1/np.asarray(self.metrics['spot']))
+            plt.savefig(fdir+'/spot_metric_plot')
+            plt.close()
 
         if len(self.metrics['roi']) > 1:
             dim=int(np.sqrt(len(self.metrics['roi'][0])))
@@ -802,9 +853,9 @@ class Optimizer:
             plt.colorbar()
             plt.savefig(fdir+'/begin_roi_averaged')
             plt.close()
-
+        
         plt.figure(figsize=(12,8))
-        bmask = np.array(self.parent_masks.get_slm_masks()[-1],dtype=np.uint8)
+        bmask = np.array(self.parent_masks.get_slm_masks()[-1],dtype=np.uint8).reshape(self.args.slm_height,self.args.slm_width)
         plt.imshow(bmask, cmap='Greys_r')
         plt.xticks([])
         plt.yticks([])
