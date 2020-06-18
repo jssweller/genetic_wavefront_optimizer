@@ -3,11 +3,7 @@ matplotlib.use('Agg') # Added to fix RuntimeError in tkinter when saving plot im
 from matplotlib import pyplot as plt
 
 import numpy as np
-import win32pipe as wp
-import win32file as wf
-import pyscreenshot as ImageGrab
 import time, datetime, sys, os, argparse, copy, __main__
-import datetime as dt
 from scipy.signal import medfilt
 
 import Interface, Population
@@ -75,7 +71,6 @@ class Optimizer:
                 self.metrics['roi'].append(field)
 
         if update_type == 'final':
-##            self.metrics['roi'][-1]=self.metrics['roi'][-2]
             if save_mask==True and len(self.metrics['masks'])>1:
                 self.metrics['masks'][-1]=self.metrics['masks'][-2]
 
@@ -268,25 +263,25 @@ class Optimizer:
             masks.append(zero_mask)
             nummasks+=1
         
-        t0 = dt.datetime.now()
-        start_time = dt.datetime.combine(t0.date() + dt.timedelta(days=start_time[2]),dt.time(hour=start_time[0], minute=start_time[1]))
-        if dt.datetime.now() > start_time:
-            start_time = dt.datetime.now()
-        end_time = start_time + dt.timedelta(hours=run_time[0],minutes=run_time[1], seconds=run_time[2])
+        t0 = datetime.datetime.now()
+        start_time = datetime.datetime.combine(t0.date() + datetime.timedelta(days=start_time[2]),datetime.time(hour=start_time[0], minute=start_time[1]))
+        if datetime.datetime.now() > start_time:
+            start_time = datetime.datetime.now()
+        end_time = start_time + datetime.timedelta(hours=run_time[0],minutes=run_time[1], seconds=run_time[2])
 
-        while start_time > dt.datetime.now():
-            print('WAITING... Time left before start:', start_time - dt.datetime.now())
+        while start_time > datetime.datetime.now():
+            print('WAITING... Time left before start:', start_time - datetime.datetime.now())
             time.sleep(30)
 
         masknums = np.arange(0,nummasks)
-        while end_time > dt.datetime.now():
+        while end_time > datetime.datetime.now():
             np.random.shuffle(masknums)
             for num in masknums:
                 print(labels[num], end='...')
                 self.base_mask = masks[num]
-                times[num].append(dt.datetime.now())
+                times[num].append(datetime.datetime.now())
                 rois[num].extend(self.get_baseline_intensity(numframes))
-                print('Time left:',end_time - dt.datetime.now())
+                print('Time left:',end_time - datetime.datetime.now())
                 
                 if len(rois[num]) >= 1000:
                     label = labels[num]
@@ -363,9 +358,6 @@ class Optimizer:
             tt += time.time()-t0
             self.parent_masks.ranksort()
         else:
-##            if self.gen > int(self.numgens * 0.9):
-##                self.interface.get_output_fields(self.parent_masks)
-##                self.parent_masks.ranksort(scale=self.uniform_scale)
             self.child_masks.ranksort(scale=self.uniform_scale)
 
         print('SLMtime', round(tt,2),'s', end=' ...\t')
@@ -536,7 +528,6 @@ class Optimizer:
         self.init_metrics()
         self.args.zernike_coeffs=[0]
         self.get_initial_metrics(save_mask=False)
-##        self.save_checkpoint()
         self.save_plots()
         
         args0 = copy.copy(self.args)
@@ -870,7 +861,6 @@ class Optimizer:
         zmask = self.parent_masks.create_zernike_mask(coeffs)
         np.savetxt(os.path.dirname(zmodes_file)+'/bestmask.txt',zmask, fmt='%d')
 
-####
     
         
 def get_mask_compare_list(directory,names=['bestmask'],write_to_file=True):
@@ -923,8 +913,6 @@ def get_xthresh_idxs(x,y,thresh=0.7):
     ymax = np.max(y)
     ymaxidx = np.argmax(y)
     
-##    ymin = np.min(y)
-##    ylimval = (ymax-ymin)*thresh + ymin
     ylimval = ymax*thresh
     if ymaxidx > 0:
         idxleft = np.argmin(np.abs(y[:ymaxidx]-ylimval))
