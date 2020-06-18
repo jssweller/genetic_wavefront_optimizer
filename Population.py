@@ -34,7 +34,7 @@ class Population:
         pstep = 1/sum(np.arange(self.num_masks+1)) # Increment for generating probability distribution.
         self.parent_probability_dist = np.arange(pstep,(self.num_masks+1)*pstep,pstep) # Probability distribution for parent selection.
         if self.masktype == 'rect':
-            self.phase_vals = np.arange(0,args.num_phase_vals,1,dtype=np.uint8) # Distribution of phase values for SLM
+            self.phase_vals = np.arange(0,args.num_phase_vals,1,dtype=np.float) # Distribution of phase values for SLM
         if self.masktype == 'zernike':
             self.phase_vals = np.arange(-args.num_phase_vals,args.num_phase_vals,1)# Dist of zmode coeff values
 
@@ -90,13 +90,16 @@ class Population:
         self.base_mask = new_mask
                 
     def update_output_fields(self,output_fields):
-        self.output_fields = np.array(output_fields,dtype=np.int)
+        self.output_fields = output_fields
     
     def get_slm_masks(self):
         """Return masks to be loaded onto slm."""
-##        print(type(self.create_full_mask(self.masks[0])),np.shape(self.base_mask), type(self.zernike_mask), type(self.grating_mask))
-        slm_masks = [self.create_full_mask(mask) + self.base_mask + self.zernike_mask + self.grating_mask for mask in self.masks]
-        return np.round(slm_masks,0).astype(dtype=np.uint8)
+        if self.masktype == 'rect':
+            slm_masks = np.array([self.create_full_mask(mask) for mask in self.masks])
+        else:
+            slm_masks = np.array(self.masks)
+        slm_masks += self.base_mask + self.zernike_mask + self.grating_mask
+        return np.mod(np.round(slm_masks,0),256).astype(dtype=np.uint8)
         
     def create_mask(self,uniform_bool=None, masktype=None):
         if uniform_bool is None:
@@ -106,7 +109,7 @@ class Population:
             masktype = self.masktype
         
         if masktype == 'rect':
-            newmask = np.zeros((self.segment_rows, self.segment_cols),dtype=np.uint8)
+            newmask = np.zeros((self.segment_rows, self.segment_cols),dtype=np.float)
         if masktype == 'zernike':
             newmask = np.zeros(len(self.zernike_modes))
             
@@ -123,7 +126,7 @@ class Population:
             if np.shape(mask)[0] == self.slm_height:
                 return mask
             else:
-                segment = np.ones((self.segment_height, self.segment_width),dtype=np.uint8)
+                segment = np.ones((self.segment_height, self.segment_width),dtype=np.float)
                 return np.kron(mask,segment)
             
         if masktype == 'zernike':
@@ -139,54 +142,69 @@ class Population:
     def init_zbasis(self):
         '''Initialize set of zernike basis functions for fast calculation of new zernike masks.'''
         print('Initializing zernike basis functions...')
-        zmodes = np.arange(3,49)
-        self.zbasis = {str(x):0 for x in zmodes}
+        zmodes = np.arange(0,49)
+        self.zbasis = np.zeros((len(zmodes),self.slm_height*self.slm_width), dtype=np.float)
         for i, z in enumerate(zmodes):
             zcoeffs = (zmodes*0)
             zcoeffs[i] = 1
-            zfunc = self.create_zernike_mask(zcoeffs, dtype=np.float32, zbasis=False)
+            zfunc = self.create_zernike_mask(zcoeffs, dtype=np.float, zbasis=False)
             if np.max(np.abs(zfunc)) > 0:
-                self.zbasis[str(z)] = zfunc
-        print()
+                self.zbasis[i] = zfunc.flatten()
+
+        print('zbasis shape:',self.zbasis.shape)
     
     def change_parent_zcoeff(self,newcoeff):
         '''Rescale zernike base mask if only single nonzero coefficient.'''
         if self.single_zcoeff == True:
-            self.masks = [(mask.astype(np.float32)/self.single_zcoeff_val*newcoeff).astype(np.uint8) for mask in self.masks]
+            self.masks = [(mask.astype(np.float)/self.single_zcoeff_val*newcoeff).astype(np.float) for mask in self.masks]
             self.single_zcoeff_val = newcoeff
         else:
             print('Warning: zernike mask has more than one coefficient. Cannot rescale!')
         
-    def update_zernike_parent(self,zcoeffs=None):
+    def update_zernike_parents(self,zcoeffs=None, zbasis=True):
         ''' '''
         if zcoeffs is None:
             zcoeffs = self.zernike_coeffs
+            
         zcoeffs=np.array(zcoeffs,dtype=np.int)
-        if max(np.shape(np.nonzero(zcoeffs)))==1:
-            self.single_zcoeff = True
-            self.single_zcoeff_val = zcoeffs[np.nonzero(zcoeffs)]
-        else:
-            self.single_zcoeff = False
-        self.masks = [self.create_zernike_mask(zcoeffs)]
+        if zcoeffs.ndim == 1:
+            zcoeffs = zcoeffs.reshape(1,-1)
+            
+##        if max(np.shape(np.nonzero(zcoeffs[i])))==1:
+##            self.single_zcoeff = True
+##            self.single_zcoeff_val = zcoeffs[i][np.nonzero(zcoeffs[i])]
+##        else:
+##            self.single_zcoeff = False
+        self.masks = self.create_zernike_mask(zcoeffs, zbasis=zbasis)
+##        self.masks = [self.masks[z] for z in range(self.masks.shape[0])]
     
-    def create_zernike_mask(self, zcoeffs=None, zmodes=None, dtype=np.uint8, zbasis=False):
+    def create_zernike_mask(self, zcoeffs=None, zmodes=None, dtype=np.float, zbasis=False):
         if zcoeffs is None:
             zcoeffs = self.zernike_coeffs
         if zmodes is None:
             zmodes = np.arange(len(zcoeffs))
-        newmask = self.create_full_mask(self.create_mask(True,masktype='rect'),masktype='rect').astype(np.float32)
-        for i,coefficient in enumerate(zcoeffs):
-            if coefficient != 0 and zmodes[i]>= 1 and zmodes[i]<=48:
-                if zbasis:
-                    if self.zbasis is None:
-                        self.init_zbasis()
-                    newmask += coefficient*self.zbasis[str(zmodes[i])]
-                else:
-                    func = getattr(self.zernike,'z'+str(zmodes[i]))
-                    zmask = np.fromfunction(func,(self.slm_height, self.slm_width),dtype=np.float32)
-                    zmask *= coefficient
-                    newmask += zmask
-        return np.array(newmask,dtype=dtype)
+            
+        zcoeffs = np.array(zcoeffs)
+##        print(zcoeffs.shape)
+        if max(zcoeffs.shape) == 1:
+            zcoeffs = np.zeros((1,49))
+        zcoeffs = zcoeffs.reshape(-1,49)
+            
+        if zbasis:
+            if self.zbasis is None:
+                self.init_zbasis()
+            newmask = np.matmul(zcoeffs, self.zbasis)
+        else:
+            newmask = np.zeros((np.shape(zcoeffs)[0],self.slm_height,self.slm_width))
+            for m in range(np.shape(zcoeffs)[0]):
+                for i,coefficient in enumerate(zcoeffs[m]):
+                    if coefficient != 0 and zmodes[i]>= 1 and zmodes[i]<=48:
+                        func = getattr(self.zernike,'z'+str(zmodes[i]))
+                        zmask = np.fromfunction(func,(self.slm_height, self.slm_width),dtype=np.float)
+                        zmask *= coefficient
+                        newmask[m] += zmask
+
+        return newmask.reshape(-1,self.slm_height, self.slm_width)
 
 ####################################### End Zernike #######################################################################
 
@@ -205,8 +223,8 @@ class Population:
             step = self.grating_step
         if step==0:
             return newmask
-        pattern = np.arange(0,int(self.slm_width),1,dtype=np.float32)*step
-        newmask += np.kron(pattern,np.ones((int(self.slm_height),1),dtype=np.float32))
+        pattern = np.arange(0,int(self.slm_width),1,dtype=np.float)*step
+        newmask += np.kron(pattern,np.ones((int(self.slm_height),1),dtype=np.float))
         return newmask
     
 ####################################### End Grating #######################################################################
@@ -269,7 +287,7 @@ class Population:
     def breed(self):
         """Breed two "parent" masks and return new mutated "child" input mask array."""
         pidx = np.random.choice(len(self.masks),size=2,replace=False,p=self.parent_probability_dist)
-        parents = [np.array(self.masks[p],dtype=np.uint8) for p in pidx]
+        parents = [np.array(self.masks[p],dtype=np.float) for p in pidx]
         if self.uniform_childs:
             if np.random.choice([True,False],p=[self.uniform_parent_prob,1 - self.uniform_parent_prob]):
                 parents[0]=self.create_mask(True)
