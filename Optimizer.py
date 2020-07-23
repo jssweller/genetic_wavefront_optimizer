@@ -390,11 +390,15 @@ class Optimizer:
             print('generation',self.gen,end=' ...\t')
             self.parent_masks.update_num_mutations(self.gen,numgens)
             self.run_generation()
-            if self.gen % int(numgens/min(4,numgens))==0:
+            if self.gen % min(int(numgens/min(4,numgens)),100) == 0:
                 self.save_checkpoint()
                 self.save_plots()
             print('Time', round(time.time()-t0,2),'s', end=' ...\t')
-            print('Fitness:', round(max(self.parent_masks.get_fitness_vals()),2))
+            fval = max(self.parent_masks.get_fitness_vals())
+            if fval < 1:
+                print('Fitness: %.2e' % (fval))
+            else:
+                print('Fitness: %.2f' % (fval))
 
         self.save_checkpoint()
         self.final_log()
@@ -420,7 +424,7 @@ class Optimizer:
             self.init_metrics()
             args0 = copy.copy(self.args)
             args0.num_masks = 1
-            args0.fitness_func = 'max'
+            args0.fitness_func = 'spot'
             
             base_mask = initial_base_mask
 
@@ -453,7 +457,7 @@ class Optimizer:
                 # Course search
                 snum = 10
                 coeffs = np.arange(coeff_range[0],coeff_range[1]+1,snum)
-                best_coeff, next_coeffs = self.get_best_coefficient(zmode, coeffs, method='argmax', metric='max', shuffle=True)
+                best_coeff, next_coeffs = self.get_best_coefficient(zmode, coeffs, method='argmax', metric='spot', shuffle=True)
                 print('next_coeffs:', next_coeffs)
                 
                 # Fine Search
@@ -461,7 +465,7 @@ class Optimizer:
 ##                coeffs = np.arange(next_coeffs[0], next_coeffs[1]+1, snum)
                 num_coeffs = 100
                 coeffs = np.linspace(next_coeffs[0], next_coeffs[1]+1, num_coeffs, dtype=int)
-                best_coeff, next_coeffs = self.get_best_coefficient(zmode, coeffs, method='poly', metric='max', repeat=1, shuffle=True)
+                best_coeff, next_coeffs = self.get_best_coefficient(zmode, coeffs, method='poly', metric='spot', repeat=1, shuffle=True)
             
                 if cumulative:
                     self.parent_masks.zernike_coeffs[zmode] = best_coeff
@@ -611,7 +615,7 @@ class Optimizer:
         return cfs
 
     
-    def get_best_coefficient(self, zmode, coeffs, method='poly', metric='max', repeat=1, record_all_data=False, shuffle=True, save_roi=True):
+    def get_best_coefficient(self, zmode, coeffs, method='poly', metric='spot', repeat=1, record_all_data=False, shuffle=True, save_roi=True):
         maxmets=[]
         spotmets=[]
         print('\ncoeff',end='')
@@ -638,21 +642,14 @@ class Optimizer:
             if 'mask' in met:
                 continue
             sortvals = metlist[-len(repcoeffs):]
-            print('srt_idxs length', len(srt_idxs))
-            print('sortvals length', len(sortvals))
             metlist[-len(repcoeffs):] = [sortvals[zz] for zz in srt_idxs]
         print('\n')
 
-        print('repcoeffs shape:', repcoeffs.shape)
-        print('sort indexes shape:', srt_idxs.shape)
         coeffs = repcoeffs[srt_idxs]
         maxmets = np.array(maxmets)[srt_idxs]
         spotmets = np.array(spotmets)[srt_idxs]
-        print('coeffs sorted?', all(np.argsort(coeffs) == np.arange(len(coeffs))))
         if method == 'poly':
-            print('\n poly max')
             max_coeff = get_polybest(coeffs, maxmets, np.argmax, plot=True, plotfolder=self.save_path, plotname='zmode_'+str(zmode)+'_max')
-            print('\n poly spot')
             spot_coeff = get_polybest(coeffs, spotmets, np.argmax, plot=True, plotfolder=self.save_path, plotname='zmode_'+str(zmode)+'_spot')
             if metric == 'max':
                 best_coeff = int(max_coeff)
@@ -756,7 +753,7 @@ class Optimizer:
             np.savetxt(f[5],self.metrics['masks'], fmt='%d')
             np.savetxt(self.save_path+'/bestmask.txt',self.parent_masks.get_slm_masks()[-1], fmt = '%d')
             if not isinstance(self.parent_masks.get_base_mask(),int):
-                np.savetxt(self.save_path+'/base_mask.txt',self.parent_masks.get_base_mask(), fmt = '%d')
+                np.savetxt(self.save_path+'/base_mask.txt', np.squeeze(self.parent_masks.get_base_mask()), fmt = '%d')
 
         for x in f:
             x.close()
@@ -814,7 +811,7 @@ class Optimizer:
 
         if len(self.metrics['spot']) > 1:
             plt.figure()
-            plt.plot(1/np.asarray(self.metrics['spot']))
+            plt.plot(np.asarray(self.metrics['spot']))
             plt.savefig(fdir+'/spot_metric_plot')
             plt.close()
 
@@ -878,7 +875,7 @@ def get_mask_compare_list(directory,names=['bestmask'],write_to_file=True):
         for root, dirs, files in os.walk(directory):
             for d in files:
                 f = os.path.join(root,d)
-                if f.find('compare_masks') != -1:
+                if 'compare_masks' in f or 'ignore' in f:
                     continue
                 for name in names:
                     if name in f:
@@ -907,11 +904,15 @@ def get_polybest(x,y,best_func=np.argmax, deg=4, plot=False, plotfolder=None, pl
     best_coeff = int(frange[zbest])
 
     if plot:
+        minp = min(p(frange))
+        maxp = max(p(frange))
+        
         plt.figure()
         plt.scatter(x, y, s=20, label='data')
         plt.plot(x, yfilt, lw=1, c='g', ls='-', label='filtered_data')
         plt.plot(frange, p(frange), c='k', lw=2, ls = '-', label='fit')
-        plt.plot([best_coeff,best_coeff],[plt.ylim()[0],p(best_coeff)], c='r', lw=2, ls='--', label='best')
+        plt.plot([best_coeff,best_coeff],[minp*.95,p(best_coeff)], c='r', lw=2, ls='--', label='best')
+        plt.ylim(minp*.95, maxp + (maxp-minp)*.2)
         plt.legend()
         plt.savefig(os.path.join(plotfolder,plotname+'.png'))
         plt.close()
