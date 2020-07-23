@@ -185,10 +185,10 @@ class Population:
             zmodes = np.arange(len(zcoeffs))
             
         zcoeffs = np.array(zcoeffs)
-##        print(zcoeffs.shape)
         if max(zcoeffs.shape) == 1:
             zcoeffs = np.zeros((1,49))
-        zcoeffs = zcoeffs.reshape(-1,49)
+            
+        zcoeffs = zcoeffs.reshape(-1,zcoeffs.shape[-1])
             
         if zbasis:
             if self.zbasis is None:
@@ -326,11 +326,11 @@ class Population:
             return np.sum(np.multiply(wroi,cen))
             
         if func == 'max':
-            return max_metric(output_field)
+            return new_spot_metric(output_field)
 
         if func == 'spot':
-##            return spot_metric(output_field)
-            return weighted_log_metric(max_metric(output_field),spot_metric(output_field))
+            return spot_metric(output_field)
+##            return weighted_log_metric(max_metric(output_field),spot_metric(output_field))
 
 
         if func == 'mean':
@@ -339,16 +339,22 @@ class Population:
         print('Invalid Fitness Function...')
     
 def weighted_log_metric(maxmet,spotmet):
-    maxmet = np.array(maxmet)
-##    maxmet /= np.min(maxmet)
-##    maxmet *= 10
+    maxmet = np.maximum(np.array(maxmet),1)  # set max(log(maxmet)) = 0
     spotmet = np.array(spotmet)
     return np.log(maxmet)*spotmet
 
 def spot_metric(output_field):
+    output_field = np.array(output_field)
     if np.sum(output_field)==0:
         return 0
-    return np.sum(np.square(output_field))/np.sum(output_field)**2
+    return np.sum(np.square(output_field+1))/np.sum(output_field+1)**2
+
+def new_spot_metric(output_field):
+    output_field = np.array(output_field)
+    dnoise = 20
+    output_field = np.maximum(output_field - dnoise, 0)
+    output_field[output_field > 0] += dnoise
+    return np.sum(np.square(output_field + 1)) / np.sum(output_field + 1) ** 2
 
 def max_metric(output_field):
     output_field = np.asarray(output_field)
