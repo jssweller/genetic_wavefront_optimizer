@@ -1,9 +1,7 @@
 import numpy as np
 import win32pipe as wp
 import win32file as wf
-import matplotlib.pyplot as plt
-import pyscreenshot as ImageGrab
-import time, datetime, sys, os, argparse
+import time
 
 class Interface:
     def __init__(self, args):

@@ -170,13 +170,7 @@ class Population:
         if zcoeffs.ndim == 1:
             zcoeffs = zcoeffs.reshape(1,-1)
             
-##        if max(np.shape(np.nonzero(zcoeffs[i])))==1:
-##            self.single_zcoeff = True
-##            self.single_zcoeff_val = zcoeffs[i][np.nonzero(zcoeffs[i])]
-##        else:
-##            self.single_zcoeff = False
         self.masks = self.create_zernike_mask(zcoeffs, zbasis=zbasis)
-##        self.masks = [self.masks[z] for z in range(self.masks.shape[0])]
     
     def create_zernike_mask(self, zcoeffs=None, zmodes=None, dtype=np.float, zbasis=False):
         if zcoeffs is None:
@@ -241,10 +235,8 @@ class Population:
     def update_fitness_vals(self,scale=0):
         if scale != 0:
             uniform_intensity = np.mean([self.output_fields[:self.num_uniform],self.output_fields[-self.num_uniform:]]) # mean intensity of uniform masks' output fields
-##            self.output_fields = (self.output_fields.astype(np.float)*scale/uniform_intensity).astype(np.int)
             outfields = (self.output_fields.astype(np.float)*scale/uniform_intensity).astype(np.int)
             self.fitness_vals = [self.fitness(field) for field in outfields]
-##            print('\nscale1',uniform_intensity)
         else:
             self.fitness_vals = [self.fitness(field) for field in self.output_fields]
 
@@ -270,7 +262,6 @@ class Population:
         if add_uniform:
             for i in range(self.num_uniform):
                 new_masks.append(self.create_mask(True))
-##                new_masks.insert(0,self.create_mask(True))
         children.update_masks(new_masks)
         return children
 
