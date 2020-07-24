@@ -385,6 +385,7 @@ class Optimizer:
             if self.gen % min(int(numgens/min(4,numgens)),100) == 0:
                 self.save_checkpoint()
                 self.save_plots()
+                self.parent_masks.save_masks(path = self.save_path, name='masks_parent_checkpoint')
             print('Time', round(time.time()-t0,2),'s', end=' ...\t')
             fval = max(self.parent_masks.get_fitness_vals())
             if fval < 1:
@@ -736,7 +737,7 @@ class Optimizer:
             f = []
             for file in files:
                 f.append(open(self.save_path+file, mode))
-            np.savetxt(f[0], 1/np.asarray(self.metrics['spot']), fmt='%10.3f')
+            np.savetxt(f[0], self.metrics['spot'], fmt='%10.3f')
             np.savetxt(f[1], self.metrics['maxmet'], fmt='%10.3f')
             np.savetxt(f[2], self.metrics['mean'], fmt='%10.3f')
             np.savetxt(f[3], self.metrics['maxint'], fmt='%d')
@@ -802,7 +803,7 @@ class Optimizer:
 
         if len(self.metrics['spot']) > 1:
             plt.figure()
-            plt.plot(np.asarray(self.metrics['spot']))
+            plt.plot(self.metrics['spot'])
             plt.savefig(fdir+'/spot_metric_plot')
             plt.close()
 

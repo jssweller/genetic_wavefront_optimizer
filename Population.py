@@ -69,6 +69,19 @@ class Population:
             if val<fitness:
                 return j
         return None
+
+    def save_masks(self, path = '', name=None):
+        masks = np.array(self.masks).reshape(-1, self.segment_rows*self.segment_cols)
+        if name is None:
+            name = 'masks_population'
+        np.savetxt(os.path.join(path, name+'.txt'), masks, fmt = '%d')
+
+    def load_masks(self, path):
+        print('Loading masks from file...', end='')
+        masks = np.loadtxt(path).reshape(-1, self.segment_rows, self.segment_cols).astype(np.float)
+        self.masks = list(masks)
+        print('Success!')
+            
     
     def replace_parents(self,children):
         cmasks = children.get_masks()
@@ -112,7 +125,7 @@ class Population:
             newmask = np.zeros((self.segment_rows, self.segment_cols),dtype=np.float)
         if masktype == 'zernike':
             newmask = np.zeros(len(self.zernike_modes))
-            
+        
         if not uniform_bool:
             for i in range(int(newmask.size*self.mutate_initial_rate)):
                 newmask[tuple([np.random.randint(0, x) for x in newmask.shape])] = np.random.choice(self.phase_vals)
@@ -317,7 +330,7 @@ class Population:
             return np.sum(np.multiply(wroi,cen))
             
         if func == 'max':
-            return new_spot_metric(output_field)
+            return weighted_max_metric(output_field)
 
         if func == 'spot':
             return spot_metric(output_field)
@@ -340,16 +353,15 @@ def spot_metric(output_field):
         return 0
     return np.sum(np.square(output_field+1))/np.sum(output_field+1)**2
 
-def new_spot_metric(output_field):
+def spot_metric_denoised(output_field):
     output_field = np.array(output_field)
     dnoise = 20
     output_field = np.maximum(output_field - dnoise, 0)
     output_field[output_field > 0] += dnoise
     return np.sum(np.square(output_field + 1)) / np.sum(output_field + 1) ** 2
 
-def max_metric(output_field):
+def weighted_max_metric(output_field):
     output_field = np.asarray(output_field)
-    midxs = np.argsort(output_field)
     output_field = output_field[np.argsort(output_field)]
     return np.mean(
         np.mean(output_field[-22:-10])*.05
