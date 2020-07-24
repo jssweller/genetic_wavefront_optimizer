@@ -70,14 +70,17 @@ class Population:
                 return j
         return None
 
-    def save_masks(self, path = '', name=None):
+    def save_masks(self, path = '', name='masks_population'):
         masks = np.array(self.masks).reshape(-1, self.segment_rows*self.segment_cols)
-        if name is None:
-            name = 'masks_population'
         np.savetxt(os.path.join(path, name+'.txt'), masks, fmt = '%d')
 
-    def load_masks(self, path):
-        print('Loading masks from file...', end='')
+    def load_masks(self, directory=self.save_path, name='masks_population'):
+        files = next(os.walk(directory))[2]
+        for f in files:
+            if name in f:
+                path = os.path.join(directory,f)
+        
+        print('Loading masks from file...\n', path)
         masks = np.loadtxt(path).reshape(-1, self.segment_rows, self.segment_cols).astype(np.float)
         self.masks = list(masks)
         print('Success!')

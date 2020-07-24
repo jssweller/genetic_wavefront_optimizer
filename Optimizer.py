@@ -364,19 +364,37 @@ class Optimizer:
         self.parent_masks.replace_parents(self.child_masks)
         self.update_metrics()
         self.gen+=1
-        
+    
     def run_genetic(self, numgens=None):
         if numgens is None:
             numgens = self.numgens
         print('genetic optimizer running...')
         self.gen=1
-        self.reset_time()
-        self.init_metrics()
-        print('Get initial metrics...', end='')
-        self.get_initial_metrics()
-        print('...done')
-        self.initial_log()
-        self.reset_time()
+
+        # check for previous run data
+        if os.path.isfile(os.path.join(self.save_path,'max_intensity_vals_checkpoint.txt')):
+            print('Previous run data found. Checking if completed...')
+            self.load_checkpoint(os.path.join(self.save_path,''))
+            gen = len(self.metrics['maxint'])
+            if gen < numgens:
+                print('Previous run not completed. Continuing...')
+                self.gen = gen - 1
+                self.parent_masks.load_masks(name='masks_parent_checkpoint')
+            else:
+                print('This run has already completed! Aborting current run...')
+                return
+
+        else:
+            # if no previous run data, start normally
+            self.reset_time()
+            self.init_metrics()
+            print('Get initial metrics...', end='')
+            self.get_initial_metrics()
+            print('...done')
+            self.initial_log()
+            self.reset_time()
+                                 
+                      
         while self.gen <= numgens:
             t0 = time.time()
             print('generation',self.gen,end=' ...\t')
