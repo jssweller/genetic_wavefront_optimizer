@@ -379,7 +379,7 @@ class Optimizer:
             if gen < numgens:
                 print('Previous run not completed. Continuing...')
                 self.gen = gen - 1
-                self.parent_masks.load_masks(name='masks_parent_checkpoint')
+                self.parent_masks.load_masks(self.save_path, name='masks_parent_checkpoint')
             else:
                 print('This run has already completed! Aborting current run...')
                 return
@@ -403,7 +403,7 @@ class Optimizer:
             if self.gen % min(int(numgens/min(4,numgens)),100) == 0:
                 self.save_checkpoint()
                 self.save_plots()
-                self.parent_masks.save_masks(path = self.save_path, name='masks_parent_checkpoint')
+                self.parent_masks.save_masks(directory = self.save_path, name='masks_parent_checkpoint')
             print('Time', round(time.time()-t0,2),'s', end=' ...\t')
             fval = max(self.parent_masks.get_fitness_vals())
             if fval < 1:
@@ -755,7 +755,7 @@ class Optimizer:
             f = []
             for file in files:
                 f.append(open(self.save_path+file, mode))
-            np.savetxt(f[0], self.metrics['spot'], fmt='%10.3f')
+            np.savetxt(f[0], self.metrics['spot'], fmt='%.4e')
             np.savetxt(f[1], self.metrics['maxmet'], fmt='%10.3f')
             np.savetxt(f[2], self.metrics['mean'], fmt='%10.3f')
             np.savetxt(f[3], self.metrics['maxint'], fmt='%d')
@@ -790,7 +790,7 @@ class Optimizer:
             if (met == 'roi' and not load_roi) or (met == 'masks' and not load_masks):
                 continue
             if os.path.isfile(self.save_path + fdict[met]):
-                self.metrics[met] = np.loadtxt(self.save_path + fdict[met], dtype=dtype[met])
+                self.metrics[met] = list(np.loadtxt(self.save_path + fdict[met], dtype=dtype[met]))
             else:
                 print('WARNING: Metric '+met+' not loaded.','\nfile not found:',self.save_path + fdict[met])
   
