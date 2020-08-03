@@ -3,6 +3,7 @@ matplotlib.use('Agg') # Added to fix RuntimeError in tkinter when saving plot im
 from matplotlib import pyplot as plt
 
 import numpy as np
+import pandas as pd
 import time, datetime, sys, os, argparse, copy, __main__
 from scipy.signal import medfilt
 
@@ -93,15 +94,22 @@ class Optimizer:
         np.savetxt(self.save_path+'/initial_mean_intensity_roi.txt', uniform_pop.get_output_fields(), fmt='%d')
         print('...done')
         
-    def get_final_metrics(self):
+    def get_final_metrics(self, compare_time_per_mask=[0,10,0]):
         print('\nGetting final metrics...\n')
         args0 = copy.copy(self.args)
         self.parent_masks.ranksort()
         final_mask = np.array(self.parent_masks.get_slm_masks()[-1])
-        masks = [final_mask,self.base_mask]
-        mask_labels = ['final_mask','base_mask']
-        zeromask = self.base_mask != 0
-        self.run_compare_masks(start_time=[0,0,0], run_time=[0,10,0], numframes=5, cmasks=masks, mask_labels=mask_labels)
+        
+        masks = [final_mask]
+        mask_labels = ['final_mask']
+        if self.base_mask != 0:
+            masks.append(self.base_mask)
+            mask_labels.append('base_mask')
+
+        compare_time = [xx*len(masks) for xx in compare_time_per_mask]
+
+        self.run_compare_masks(start_time=[0,0,0], run_time=compare_time, numframes=1, cmasks=masks, mask_labels=mask_labels)
+
         
     def get_final_mean_intensity(self):
         print('\nGetting final mean intensity...\n')
@@ -116,17 +124,20 @@ class Optimizer:
         file.write('Final Avg Intensity: '+str(np.mean(final_mean_intensity))+'\n')
         file.close()
 
-    def get_baseline_intensity(self, num_frames):
-        print('Recording baseline intensity...')
-        self.reset_time()
-        args0 = copy.copy(self.args)
-        args0.zernike_coeffs = [0]
-        args0.num_masks = 1
-        uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
 
+    def get_baseline_intensity(self, num_frames, population=None):
+        self.reset_time()
+        if population is None:
+            args0 = copy.copy(self.args)
+            args0.zernike_coeffs = [0]
+            args0.num_masks = 1
+            uniform_pop = Population.Population(args0,base_mask=self.base_mask,uniform=True)
+        else:
+            uniform_pop = population
+            
         self.interface.get_output_fields(uniform_pop,repeat=num_frames)
-        print('.....Done\n')
         return uniform_pop.get_output_fields()
+
 
     def get_baseline_maxmean(self, run_minutes, num_to_avg):
         print('Recording baseline intensity...\n')
@@ -155,11 +166,11 @@ class Optimizer:
         self.save_path = args0.save_path
         print('.....Done\n\n')
 
-    def save_rois_metrics(self, rois, population=None, save_path=None, logfile=None, append=False):
+    def save_roi_metrics(self, rois, population=None, save_path=None, logfile=None, append=False):
         self.init_metrics()
         if population is None:
             population = Population.Population(self.args,base_mask=self.base_mask,uniform=True)
-        if save_path != None:
+        if save_path is not None:
             self.save_path = save_path
 
         if len(rois) > 0:
@@ -173,26 +184,14 @@ class Optimizer:
         self.load_checkpoint(load_masks=False)
         self.save_plots()
 
-        if logfile == None:
-            f = self.save_path+'/averages.txt'
-            file = open(f,'w+')
-        else:
-            file = logfile
-        for key in self.metrics.keys():
-            if key == 'roi':
-                continue
-            d = self.metrics[key]
-            if len(d)>0:
-                m = np.mean(d)
-                if key == 'spot':
-                    m = 1/m
-                file.write('\n'+key+': '+str(m))
-        file.write('\n\n')
-        file.close()
 
-        self.init_metrics()                       
+        keys = [xx for xx in self.metrics.keys() if 'roi' not in xx and 'masks' not in xx]
+        mean_vals = {key: [np.mean(self.metrics[key])] for key in keys}
+        
+        self.init_metrics()
         self.save_path = self.args.save_path
-    
+        return mean_vals
+
 
     def run_compare_masks(self,
                           start_time,
@@ -202,7 +201,7 @@ class Optimizer:
                           maskfiles='',
                           runid='',
                           run_description='',
-                          zeromask=False,
+                          zeromask=True,
                           cmasks=None,
                           mask_labels=None):
 
@@ -214,9 +213,16 @@ class Optimizer:
         idnum = 0
         f = folder
         
-        masks, labels, rois, times = [],[],[],[]
-        nummasks = 0
+        labels = []
+        mask_pops = defaultdict(int)
+        rois = defaultdict(list)
+        times = defaultdict(list)
+        
+        args0 = copy.copy(self.args)
+        args0.zernike_coeffs = [0]
+        args0.num_masks = 1
 
+        # If no cmasks given, create folders for each mask and '
         if cmasks == None:
             while os.path.isdir(folder):
                 folder = f+str(idnum+1)
@@ -229,89 +235,88 @@ class Optimizer:
                 if os.path.isfile(mfile):
                     file.write('Mask file:' + mfile + '\n')
             file.close()
-            print('2')
 
+            # load masks from list of mask files, create labels, set up data storage for compare run
             for mfile in maskfiles:
                 if os.path.isfile(mfile):
-                    genetic_mask = np.loadtxt(mfile, dtype=np.uint8).reshape([768,1024])
-                    masks.append(genetic_mask)
-                    labels.append(mfile[lenfolder:].replace('\\','--').replace('/','--').replace(':','yy'))
-                    rois.append([])
-                    times.append([])
-                    nummasks+=1
+                    label = mfile[lenfolder:].replace('\\','--').replace('/','--').replace(':','yy')
+                    labels.append(label)
+                    
+                    base_mask = np.loadtxt(mfile, dtype=np.uint8).reshape([768,1024])
+                    mask_pops[label] = Population.Population(args0,base_mask=base_mask,uniform=True)
                 else:
                     print('File not found: ',mfile)
 
+        # if cmasks given, use cmasks as masks, mask_labels as labels. Set up data storage for compare run
         else:
-            for j, mask in enumerate(cmasks):
-                masks.append(mask)
-                nummasks += 1
-                rois.append([])
-                times.append([])
+            for j, base_mask in enumerate(cmasks):
                 if mask_labels==None:
                     labels.append('mask_'+str(j))
                 else:
                     labels.append(mask_labels[j])
                 
+                mask_pops[labels[j]] = Population.Population(args0,base_mask=base_mask,uniform=True)
+                
 
-        print(''.join([x+'\n' for x in labels]))
+        # add zero mask to mask list
         if zeromask:
             zero_mask = 0
             labels.append('nomask')
-            rois.append([])
-            times.append([])
+            
             masks.append(zero_mask)
-            nummasks+=1
-        
+            mask_pops['nomask'] = Population.Population(args0,base_mask=zero_mask, uniform=True)
+
+        print('mask labels:\n'.join([x+'\n' for x in labels])) # print list of mask labels
+
+        # if the current time is past the start time, set start time to now
         t0 = datetime.datetime.now()
         start_time = datetime.datetime.combine(t0.date() + datetime.timedelta(days=start_time[2]),datetime.time(hour=start_time[0], minute=start_time[1]))
         if datetime.datetime.now() > start_time:
             start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(hours=run_time[0],minutes=run_time[1], seconds=run_time[2])
 
+        # wait until the current time is after the start time
         while start_time > datetime.datetime.now():
             print('WAITING... Time left before start:', start_time - datetime.datetime.now())
             time.sleep(30)
 
-        masknums = np.arange(0,nummasks)
         while end_time > datetime.datetime.now():
-            np.random.shuffle(masknums)
-            for num in masknums:
-                print(labels[num], end='...')
-                self.base_mask = masks[num]
-                times[num].append(datetime.datetime.now())
-                rois[num].extend(self.get_baseline_intensity(numframes))
-                print('Time left:',end_time - datetime.datetime.now())
-                
-                if len(rois[num]) >= 100:
-                    label = labels[num]
-                    fdir = folder+'/'+label
-                    os.makedirs(fdir,exist_ok=True)
-
-                    mode = 'w+'
-                    if os.path.isfile(folder+'/averages.txt') and num>0:
-                        mode = 'a'
-                    file = open(folder+'/averages.txt',mode)
-                    file.write('\n\n'+label+' averaged: \n')
-                    self.save_rois_metrics(rois[num], save_path=fdir, logfile=file, append=True)
-                    tfile = open(fdir+'/baseline_times.txt', 'a')
-                    np.savetxt(tfile, np.asarray(times[num],dtype='datetime64[s]'), fmt='%s')
-                    rois[num]=[]
-                    times[num]=[]
+            print('Time left:', end_time - datetime.datetime.now())
+            if any([len(run[label])>100 for label in labels]):
+                self.save_checkpoint_compare(labels, rois, folder)
             
-        for i,label in enumerate(labels):
-            fdir = folder+'/'+label
+            np.random.shuffle(labels)
+            for mask in labels:
+                print(labels[mask], end='...')
+                times[mask].append(datetime.datetime.now())
+                rois[mask].extend(self.get_baseline_intensity(numframes, population = mask_pops[mask]))                
+
+        # save final data
+        self.save_checkpoint_compare(labels, rois, folder)
+               
+
+    def save_checkpoint_compare(self, mask_labels, mask_rois, folder):
+        keys = [xx for xx in self.metrics.keys() if 'roi' not in xx and 'masks' not in xx]
+        save_file = os.path.join(folder,'averages.csv')
+
+        df = pd.DataFrame(columns=['run']+keys)
+        
+        for mask in mask_labels:
+            run_dir = os.path.join(folder,run)
             os.makedirs(fdir,exist_ok=True)
-                     
-            mode = 'w+'
-            if os.path.isfile(folder+'/averages.txt') and i>0:
-                mode = 'a'
-            file = open(folder+'/averages.txt',mode)
-            file.write('\n\n'+label+' averaged: \n')
-            self.save_rois_metrics(rois[i], save_path=fdir, logfile=file, append=True)
-            tfile = open(fdir+'/baseline_times.txt', 'a')
-            np.savetxt(tfile, np.asarray(times[i],dtype='datetime64[s]'), fmt='%s')
-            tfile.close()       
+            
+            averages_dict = self.save_roi_metrics(mask_rois[mask], save_path=run_dir, append=True)
+            averages_dict[mask] = [mask]
+            df = pd.concat([df,pd.DataFrame.from_dict(averages_dict)])
+            
+            with open(fdir+'/baseline_times.txt', 'a') as tfile:
+                np.savetxt(tfile, np.asarray(times[mask],dtype='datetime64[s]'), fmt='%s')
+            rois[mask]=[]
+            times[mask]=[]
+
+        df = df.sort_values('maxint', ascending=False)
+        df = df.set_index('run')
+        df.to_csv(save_file)
         
 
     def run_compare_all_in_folder(self,folder,run_time):
@@ -364,6 +369,7 @@ class Optimizer:
         self.parent_masks.replace_parents(self.child_masks)
         self.update_metrics()
         self.gen+=1
+
     
     def run_genetic(self, numgens=None):
         if numgens is None:
@@ -414,7 +420,8 @@ class Optimizer:
         self.save_checkpoint()
         self.final_log()
         self.save_plots()
-        self.get_final_metrics()
+        self.get_final_metrics(compare_time=[0,20,0])
+
 
     def run_zernike(self, zmodes, coeff_range, num_runs=2, cumulative=True):
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
@@ -497,6 +504,7 @@ class Optimizer:
             self.save_plots()
             self.get_final_metrics()
             self.save_path = args0.save_path
+
 
     def map_zspace(self, zmodes, coeff_range, repeat=10, cumulative=True):
         '''Zernike optimization algorithm returns best zernike coefficients in coeff_range'''
