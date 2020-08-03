@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import time, datetime, sys, os, argparse, copy, __main__
 from scipy.signal import medfilt
+from collections import defaultdict
 
 import Interface, Population
 
@@ -99,7 +100,7 @@ class Optimizer:
         args0 = copy.copy(self.args)
         self.parent_masks.ranksort()
         final_mask = np.array(self.parent_masks.get_slm_masks()[-1])
-        
+
         masks = [final_mask]
         mask_labels = ['final_mask']
         if self.base_mask != 0:
@@ -262,8 +263,6 @@ class Optimizer:
         if zeromask:
             zero_mask = 0
             labels.append('nomask')
-            
-            masks.append(zero_mask)
             mask_pops['nomask'] = Population.Population(args0,base_mask=zero_mask, uniform=True)
 
         print('mask labels:\n'.join([x+'\n' for x in labels])) # print list of mask labels
@@ -281,38 +280,39 @@ class Optimizer:
             time.sleep(30)
 
         while end_time > datetime.datetime.now():
-            print('Time left:', end_time - datetime.datetime.now())
-            if any([len(run[label])>100 for label in labels]):
-                self.save_checkpoint_compare(labels, rois, folder)
+            print('\nTime left:', end_time - datetime.datetime.now())
+            if any([len(rois[mask])>100 for mask in labels]):
+                self.save_checkpoint_compare(labels, rois, times, folder)
             
             np.random.shuffle(labels)
             for mask in labels:
-                print(labels[mask], end='...')
+                print(mask)
                 times[mask].append(datetime.datetime.now())
                 rois[mask].extend(self.get_baseline_intensity(numframes, population = mask_pops[mask]))                
 
         # save final data
-        self.save_checkpoint_compare(labels, rois, folder)
+        self.save_checkpoint_compare(labels, rois, times, folder)
                
 
-    def save_checkpoint_compare(self, mask_labels, mask_rois, folder):
+    def save_checkpoint_compare(self, mask_labels, compare_rois, compare_times, folder):
+        print('\n\nSaving checkpoint...\n')
         keys = [xx for xx in self.metrics.keys() if 'roi' not in xx and 'masks' not in xx]
         save_file = os.path.join(folder,'averages.csv')
 
         df = pd.DataFrame(columns=['run']+keys)
         
         for mask in mask_labels:
-            run_dir = os.path.join(folder,run)
-            os.makedirs(fdir,exist_ok=True)
+            run_dir = os.path.join(folder,mask)
+            os.makedirs(run_dir,exist_ok=True)
             
-            averages_dict = self.save_roi_metrics(mask_rois[mask], save_path=run_dir, append=True)
-            averages_dict[mask] = [mask]
-            df = pd.concat([df,pd.DataFrame.from_dict(averages_dict)])
+            averages_dict = self.save_roi_metrics(compare_rois[mask], save_path=run_dir, append=True)
+            averages_dict['run'] = [mask]
+            df = pd.concat([df,pd.DataFrame.from_dict(averages_dict)], join='outer', sort=False)
             
-            with open(fdir+'/baseline_times.txt', 'a') as tfile:
-                np.savetxt(tfile, np.asarray(times[mask],dtype='datetime64[s]'), fmt='%s')
-            rois[mask]=[]
-            times[mask]=[]
+            with open(run_dir+'/baseline_times.txt', 'a') as tfile:
+                np.savetxt(tfile, np.asarray(compare_times[mask],dtype='datetime64[s]'), fmt='%s')
+            compare_rois[mask]=[]
+            compare_times[mask]=[]
 
         df = df.sort_values('maxint', ascending=False)
         df = df.set_index('run')
@@ -420,7 +420,7 @@ class Optimizer:
         self.save_checkpoint()
         self.final_log()
         self.save_plots()
-        self.get_final_metrics(compare_time=[0,20,0])
+        self.get_final_metrics(compare_time_per_mask=[0,20,0])
 
 
     def run_zernike(self, zmodes, coeff_range, num_runs=2, cumulative=True):
