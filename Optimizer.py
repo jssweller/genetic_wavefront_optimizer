@@ -283,7 +283,7 @@ class Optimizer:
                 rois[num].extend(self.get_baseline_intensity(numframes))
                 print('Time left:',end_time - datetime.datetime.now())
                 
-                if len(rois[num]) >= 1000:
+                if len(rois[num]) >= 100:
                     label = labels[num]
                     fdir = folder+'/'+label
                     os.makedirs(fdir,exist_ok=True)

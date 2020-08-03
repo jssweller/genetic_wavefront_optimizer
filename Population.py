@@ -351,10 +351,12 @@ def weighted_log_metric(maxmet,spotmet):
     return np.log(maxmet)*spotmet
 
 def spot_metric(output_field):
-    output_field = np.array(output_field)
-    if np.sum(output_field)==0:
-        return 0
-    return np.sum(np.square(output_field+1))/np.sum(output_field+1)**2
+    output_field = np.array(output_field, dtype=np.float)
+    a = 1000
+    return (spot(output_field + a) - spot(np.ones(output_field.size))) * output_field.size**2
+
+def spot(output_field):
+    return np.sum(np.square(output_field))/np.sum(output_field)**2
 
 def spot_metric_denoised(output_field):
     output_field = np.array(output_field)
