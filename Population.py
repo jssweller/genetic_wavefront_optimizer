@@ -82,7 +82,8 @@ class Population:
         
         print('Loading masks from file...\n', path)
         masks = np.loadtxt(path).reshape(-1, self.segment_rows, self.segment_cols).astype(np.float)
-        self.masks = list(masks)
+        self.masks = masks
+        print('selfmasks', type(self.masks), np.shape(self.masks))
         print('Success!')
             
     
@@ -114,6 +115,10 @@ class Population:
             slm_masks = np.array([self.create_full_mask(mask) for mask in self.masks])
         else:
             slm_masks = np.array(self.masks)
+##        print('slm', type(slm_masks), np.shape(slm_masks))
+##        print('base', type(self.base_mask), np.shape(self.base_mask))
+##        print('grating', type(self.grating_mask), np.shape(self.grating_mask))
+##        print('zernike', type(self.zernike_mask), np.shape(self.zernike_mask))
         slm_masks += self.base_mask + self.zernike_mask + self.grating_mask
         return np.mod(np.round(slm_masks,0),256).astype(dtype=np.uint8)
         
@@ -142,7 +147,7 @@ class Population:
             if np.shape(mask)[0] == self.slm_height:
                 return mask
             else:
-                segment = np.ones((self.segment_height, self.segment_width),dtype=np.float)
+                segment = np.ones((self.segment_height, self.segment_width), dtype=np.float)
                 return np.kron(mask,segment)
             
         if masktype == 'zernike':
@@ -263,9 +268,9 @@ class Population:
         self.update_fitness_vals()
         if len(self.masks)>1:
             ranks = np.argsort(self.fitness_vals)
-            self.fitness_vals = np.array(self.fitness_vals)[ranks].tolist()
-            self.masks = np.array(self.masks)[ranks].tolist()
-            self.output_fields = np.array(self.output_fields,dtype=np.int)[ranks].tolist()
+            self.fitness_vals = np.array(self.fitness_vals)[ranks]
+            self.masks = np.array(self.masks)[ranks]
+            self.output_fields = np.array(self.output_fields,dtype=np.int)[ranks]
         
     
     def make_children(self,add_uniform=False):
