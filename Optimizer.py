@@ -383,7 +383,7 @@ class Optimizer:
             print('Previous run data found. Checking if completed...')
             self.load_checkpoint(os.path.join(self.save_path,''))
             gen = len(self.metrics['maxint'])
-            if gen < numgens or not os.path.isfile(os.path.join(self.save_path,'compare_masks_compareall/averages.csv')):
+            if gen < numgens or not os.path.isfile(os.path.join(self.save_path,'compare_masks/averages.csv')):
                 print('Previous run not completed. Continuing...')
                 self.gen = gen - 1
                 self.parent_masks.load_masks(self.save_path, name='masks_parent_checkpoint')
@@ -421,7 +421,7 @@ class Optimizer:
         self.save_checkpoint()
         self.final_log()
         self.save_plots()
-        self.get_final_metrics(compare_time_per_mask=[0,10,0])
+        self.get_final_metrics(compare_time_per_mask=[0,20,0])
 
 
     def run_zernike(self, zmodes, coeff_range, num_runs=2, cumulative=True):
