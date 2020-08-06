@@ -320,7 +320,7 @@ class Optimizer:
         df.to_csv(save_file)
         
 
-    def run_compare_all_in_folder(self,folder,run_time):
+    def run_compare_all_in_folder(self, folder, run_time_per_mask=[0,10,0]):
         ### PARAMS ####
         runid = '_compareall'
         run_description = 'Comparing performance of all masks in folder.'
@@ -333,8 +333,11 @@ class Optimizer:
         else:
             maskfiles = np.loadtxt(folder+'/compare_list.txt',dtype=np.str)
         print(''.join([x+'\n' for x in maskfiles]))
+
+        compare_time = [xx*(len(maskfiles)+1) for xx in compare_time_per_mask]
+        
         self.run_compare_masks(start_time,
-                          run_time,
+                          run_time=compare_time,
                           numframes,
                           folder,
                           maskfiles,
