@@ -320,7 +320,7 @@ class Optimizer:
         df.to_csv(save_file)
         
 
-    def run_compare_all_in_folder(self, folder, run_time_per_mask=[0,10,0]):
+    def run_compare_all_in_folder(self, folder, compare_time_per_mask=[0,10,0]):
         ### PARAMS ####
         runid = '_compareall'
         run_description = 'Comparing performance of all masks in folder.'
@@ -337,7 +337,7 @@ class Optimizer:
         compare_time = [xx*(len(maskfiles)+1) for xx in compare_time_per_mask]
         
         self.run_compare_masks(start_time,
-                          run_time=compare_time,
+                          compare_time,
                           numframes,
                           folder,
                           maskfiles,
@@ -382,6 +382,9 @@ class Optimizer:
         self.gen=1
 
         # check for previous run data
+        if os.path.isfile(os.path.join(self.save_path,'compare_masks','averages.csv')):
+            print('This run has already completed! Aborting current run...')
+            return
         if os.path.isfile(os.path.join(self.save_path,'max_intensity_vals_checkpoint.txt')):
             print('Previous run data found. Checking if completed...')
             self.load_checkpoint(os.path.join(self.save_path,''))
